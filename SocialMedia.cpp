@@ -170,6 +170,6 @@ void SocialMedia::buildGraph() {
    * Nếu ta chạy suggestFriends(1) -> Gợi ý cho Alice.
    * Thuật toán sẽ tìm bạn của Bob và Eve.
    * Nó sẽ phát hiện ra Charlie (bạn của Bob) cách Alice đúng 2 bậc.
-   * -> Output mong đợi: Gợi ý Charlie cho Alice.
+   * -> Output mong đợi: Gợi ý Charlie cho Alice. kjhkhvvjv
    */
 }
