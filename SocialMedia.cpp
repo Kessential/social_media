@@ -52,7 +52,7 @@ bool SocialMedia::loadConnectionsFromFile(const std::string &filepath) {
 
 void SocialMedia::listUsers() {
   for (auto &[userID, username] : users) {
-    std::cout << "User ID: " << userID << ", "
+    std::cout << "User ID: " << userID << ", ";
   }
 }
 
