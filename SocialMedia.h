@@ -4,8 +4,7 @@
 #include <unordered_set>
 #include <vector>
 
-
-using UserID = int;
+// 123456789
 
 struct FriendSuggestion {
   int suggestedUserID;
