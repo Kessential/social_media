@@ -4,8 +4,6 @@
 #include <unordered_set>
 #include <vector>
 
-// 123456789
-
 struct FriendSuggestion {
   int suggestedUserID;
   int mutualConnectionsCount;
@@ -30,5 +28,4 @@ public:
   suggestFriends(int userID, int maxSuggestions = 5) const;
 
   void printSuggestions(int userID, int maxSuggestions = 5) const;
-  void buildGraph();
 };

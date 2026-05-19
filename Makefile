@@ -1,15 +1,20 @@
 CXX      := g++
 CXXFLAGS := -std=c++17 -Wall -Wextra -O2
-SRCS     := FriendsSuggestion.cpp SocialMedia.cpp
-OBJS     := $(SRCS:.cpp=.o)
 
-# Detect OS: set executable extension and delete command
+SRCDIR   := src
+BUILDDIR := build
+
+SRCS     := $(wildcard $(SRCDIR)/*.cpp)
+OBJS     := $(patsubst $(SRCDIR)/%.cpp,$(BUILDDIR)/%.o,$(SRCS))
+
 ifeq ($(OS),Windows_NT)
-    TARGET := FriendsSuggestion.exe
-    RMCMD  = powershell -NoProfile -Command "Remove-Item -Force -ErrorAction SilentlyContinue *.o,*.exe"
+    TARGET := SocialMedia.exe
+    MKDIR   = powershell -NoProfile -Command "New-Item -ItemType Directory -Force -Path $(BUILDDIR) | Out-Null"
+    RMCMD   = powershell -NoProfile -Command "Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $(BUILDDIR),$(TARGET)"
 else
-    TARGET := FriendsSuggestion
-    RMCMD  = rm -f $(OBJS) $(TARGET)
+    TARGET := SocialMedia
+    MKDIR   = mkdir -p $(BUILDDIR)
+    RMCMD   = rm -rf $(BUILDDIR) $(TARGET)
 endif
 
 all: $(TARGET)
@@ -17,7 +22,8 @@ all: $(TARGET)
 $(TARGET): $(OBJS)
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
-%.o: %.cpp SocialMedia.h
+$(BUILDDIR)/%.o: $(SRCDIR)/%.cpp $(SRCDIR)/SocialMedia.h
+	$(MKDIR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 clean:

@@ -1,17 +1,27 @@
 #include "SocialMedia.h"
 #include <algorithm>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <queue>
 #include <sstream>
 #include <utility>
-
 
 void SocialMedia::addUser(int userID, const std::string &name) {
   users.insert({userID, name});
 }
 
 void SocialMedia::addConnection(int userID_1, int userID_2) {
+  if (userID_1 == userID_2) {
+    std::cerr << "[CANH BAO] Tu ket noi toi chinh minh: " << userID_1 << "\n";
+    return;
+  }
+  if (users.find(userID_1) == users.end() ||
+      users.find(userID_2) == users.end()) {
+    std::cerr << "[CANH BAO] Ket noi toi nguoi dung khong ton tai: " << userID_1
+              << "<->" << userID_2 << "\n";
+    return;
+  }
   adjList[userID_1].insert(userID_2);
   adjList[userID_2].insert(userID_1);
 }
@@ -19,7 +29,7 @@ void SocialMedia::addConnection(int userID_1, int userID_2) {
 bool SocialMedia::loadUsersFromFile(const std::string &filepath) {
   std::ifstream file(filepath);
   if (!file.is_open()) {
-    std::cerr << "[ERROR] Cannot open file: " << filepath << "\n";
+    std::cerr << "[LOI] Khong the mo duoc file: " << filepath << "\n";
     return false;
   }
   std::string line;
@@ -36,7 +46,7 @@ bool SocialMedia::loadUsersFromFile(const std::string &filepath) {
 bool SocialMedia::loadConnectionsFromFile(const std::string &filepath) {
   std::ifstream file(filepath);
   if (!file.is_open()) {
-    std::cerr << "[ERROR] Cannot open file: " << filepath << "\n";
+    std::cerr << "[LOI] Khong the mo duoc file: " << filepath << "\n";
     return false;
   }
   std::string line;
@@ -51,13 +61,17 @@ bool SocialMedia::loadConnectionsFromFile(const std::string &filepath) {
 }
 
 void SocialMedia::listUsers() {
-  for (auto &[userID, username] : users) {
-    std::cout << "User ID: " << userID << ", ";
+  for (const auto &[userID, username] : users) {
+    std::cout << "User ID: " << std::setw(15) << userID
+              << ", Username: " << std::setw(32) << username << "\n";
   }
 }
 
 std::unordered_set<int> SocialMedia::getDirectConnections(int userID) const {
-  return adjList.at(userID);
+  auto it = adjList.find(userID);
+  if (it == adjList.end())
+    return {};
+  return it->second;
 }
 
 std::unordered_set<int> SocialMedia::getFriendsOfFriends(int userID) const {
@@ -72,17 +86,23 @@ std::unordered_set<int> SocialMedia::getFriendsOfFriends(int userID) const {
   q.push({userID, 0});
 
   while (!q.empty()) {
-    const auto &[currUser, depth] = q.front();
+    const auto [currUser, depth] = q.front();
     q.pop();
 
     if (depth == 2) {
       friendsOfFriends.insert(currUser);
+      continue;
     }
 
-    for (int neighbor : adjList.at(currUser)) {
-      if (visited.find(neighbor) == visited.end()) {
-        visited.insert(neighbor);
-        q.push({neighbor, depth + 1});
+    if (depth < 2) {
+      auto adjListIt = adjList.find(currUser);
+      if (adjListIt == adjList.end())
+        continue;
+      for (int neighbor : adjListIt->second) {
+        if (visited.find(neighbor) == visited.end()) {
+          visited.insert(neighbor);
+          q.push({neighbor, depth + 1});
+        }
       }
     }
   }
@@ -144,32 +164,4 @@ void SocialMedia::printSuggestions(int userID, int maxSuggestions) const {
     }
     std::cout << "\n";
   }
-}
-
-void SocialMedia::buildGraph() {
-  // 1. Tạo dữ liệu người dùng giả (Mock Users)
-  addUser(1, "Alice");
-  addUser(2, "Bob");
-  addUser(3, "Charlie");
-  addUser(4, "David");
-  addUser(5, "Eve");
-
-  // 2. Tạo kịch bản kết nối (Mock Connections)
-  // Cụm 1: Alice, Bob, Eve chơi thân với nhau (Tam giác)
-  addConnection(1, 2); // Alice - Bob
-  addConnection(1, 5); // Alice - Eve
-  addConnection(2, 5); // Bob - Eve
-
-  // Cụm 2: Nhóm khác
-  addConnection(3, 4); // Charlie - David
-
-  // Cầu nối: Bob quen Charlie qua lớp học thêm
-  addConnection(2, 3); // Bob - Charlie
-
-  /* * KỊCH BẢN TEST BFS:
-   * Nếu ta chạy suggestFriends(1) -> Gợi ý cho Alice.
-   * Thuật toán sẽ tìm bạn của Bob và Eve.
-   * Nó sẽ phát hiện ra Charlie (bạn của Bob) cách Alice đúng 2 bậc.
-   * -> Output mong đợi: Gợi ý Charlie cho Alice. kjhkhvvjv
-   */
 }
