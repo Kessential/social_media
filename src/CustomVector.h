@@ -8,6 +8,8 @@ private:
   size_t len;
 
   void reserve(size_t newCap) {
+    if (newCap <= cap)
+      return;
     T *temp = new T[newCap];
     for (size_t i = 0; i < len; ++i) {
       temp[i] = data[i];
@@ -23,34 +25,36 @@ public:
   ~Vector() { clear(); }
 
   Vector(const Vector &other)
-      : cap(other.cap), len(other.len), data(new T[other.len]) {
+      : cap(other.cap), len(other.len),
+        data(other.cap > 0 ? new T[other.cap] : nullptr) {
     for (size_t i = 0; i < other.len; ++i) {
-      data[i] = other->data[i];
+      data[i] = other.data[i];
     }
   }
 
   Vector &operator=(const Vector &other) {
     if (this != &other) {
-      delete[] this->data;
-      data = new T[other.len];
+      delete[] data;
       len = other.len;
       cap = other.cap;
+      data = cap > 0 ? new T[other.cap] : nullptr;
       for (size_t i = 0; i < other.len; ++i)
-        data[i] = other->data[i];
+        data[i] = other.data[i];
     }
     return *this;
   }
 
   void push_back(const T &value) {
     if (len == cap) {
-      reserve(cap * 2);
+      reserve(cap == 0 ? 1 : cap * 2);
     }
     data[len] = value;
     ++len;
   };
 
   void pop_back() {
-
+    if (len > 0)
+      --len;
   };
 
   T &operator[](size_t index) { return data[index]; };
