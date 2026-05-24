@@ -47,6 +47,19 @@ private:
     bucketCount = newBucketCount;
   }
 
+  // Helper: deep-copy all nodes from another HashMap
+  void copyFrom(const HashMap &other) {
+    for (size_t i = 0; i < other.bucketCount; ++i) {
+      HashNode *curr = other.table[i];
+      HashNode **ptr = &table[i];
+      while (curr != nullptr) {
+        *ptr = new HashNode(curr->key, curr->value);
+        ptr = &((*ptr)->next);
+        curr = curr->next;
+      }
+    }
+  }
+
 public:
   HashMap(size_t initialBuckets = 16, float loadFactor = 0.75f)
       : bucketCount(initialBuckets), count(0), maxLoadFactor(loadFactor) {
@@ -58,8 +71,52 @@ public:
     delete[] table;
   }
 
-  HashMap(const HashMap &other) = delete;
-  HashMap &operator=(const HashMap &other) = delete;
+  // Copy constructor
+  HashMap(const HashMap &other)
+      : bucketCount(other.bucketCount), count(other.count),
+        maxLoadFactor(other.maxLoadFactor) {
+    table = new HashNode *[bucketCount]();
+    copyFrom(other);
+  }
+
+  // Copy assignment
+  HashMap &operator=(const HashMap &other) {
+    if (this != &other) {
+      clear();
+      delete[] table;
+      bucketCount = other.bucketCount;
+      count = other.count;
+      maxLoadFactor = other.maxLoadFactor;
+      table = new HashNode *[bucketCount]();
+      copyFrom(other);
+    }
+    return *this;
+  }
+
+  // Move constructor
+  HashMap(HashMap &&other) noexcept
+      : table(other.table), bucketCount(other.bucketCount),
+        count(other.count), maxLoadFactor(other.maxLoadFactor) {
+    other.table = new HashNode *[16]();
+    other.bucketCount = 16;
+    other.count = 0;
+  }
+
+  // Move assignment
+  HashMap &operator=(HashMap &&other) noexcept {
+    if (this != &other) {
+      clear();
+      delete[] table;
+      table = other.table;
+      bucketCount = other.bucketCount;
+      count = other.count;
+      maxLoadFactor = other.maxLoadFactor;
+      other.table = new HashNode *[16]();
+      other.bucketCount = 16;
+      other.count = 0;
+    }
+    return *this;
+  }
 
   void put(const K &key, const V &value) {
     if (static_cast<float>(count) / bucketCount >= maxLoadFactor) {
@@ -175,5 +232,27 @@ public:
       table[i] = nullptr;
     }
     count = 0;
+  }
+
+  // Duyệt qua tất cả các cặp (key, value) trong HashMap
+  template <typename Func> void forEach(Func fn) const {
+    for (size_t i = 0; i < bucketCount; ++i) {
+      HashNode *curr = table[i];
+      while (curr != nullptr) {
+        fn(curr->key, curr->value);
+        curr = curr->next;
+      }
+    }
+  }
+
+  // Duyệt qua tất cả các cặp (key, value) - phiên bản non-const
+  template <typename Func> void forEachMut(Func fn) {
+    for (size_t i = 0; i < bucketCount; ++i) {
+      HashNode *curr = table[i];
+      while (curr != nullptr) {
+        fn(curr->key, curr->value);
+        curr = curr->next;
+      }
+    }
   }
 };

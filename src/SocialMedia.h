@@ -1,31 +1,69 @@
 #pragma once
+#include "CustomHashMap.h"
+#include "CustomHashSet.h"
+#include "CustomQueue.h"
+#include "CustomSort.h"
+#include "CustomVector.h"
 #include <string>
-#include <unordered_map>
-#include <unordered_set>
-#include <vector>
 
+// Struct lưu thông tin node BFS (dùng thay std::pair)
+struct BFSNode {
+  int userID;
+  int depth;
+};
+
+// Struct lưu thông tin gợi ý kết bạn
 struct FriendSuggestion {
   int suggestedUserID;
   int mutualConnectionsCount;
-  std::vector<int> mutualConnectionsIDs;
+  Vector<int> mutualConnectionsIDs;
 };
 
 class SocialMedia {
 private:
-  std::unordered_map<int, std::string> users;
-  std::unordered_map<int, std::unordered_set<int>> adjList;
+  HashMap<int, std::string> users;
+  HashMap<int, HashSet<int>> adjList;
 
 public:
+  // === Quản lý người dùng & kết nối ===
   void addUser(int userID, const std::string &name);
   void addConnection(int userID_1, int userID_2);
+  void removeUser(int userID);
+  void removeConnection(int userID_1, int userID_2);
+
+  // === Tải dữ liệu từ file ===
   bool loadUsersFromFile(const std::string &filepath);
   bool loadConnectionsFromFile(const std::string &filepath);
-  void listUsers();
 
-  [[nodiscard]] std::unordered_set<int> getDirectConnections(int userID) const;
-  [[nodiscard]] std::unordered_set<int> getFriendsOfFriends(int userID) const;
-  [[nodiscard]] std::vector<FriendSuggestion>
-  suggestFriends(int userID, int maxSuggestions = 5) const;
+  // === Hiển thị ===
+  void listUsers() const;
+  void printUserInfo(int userID) const;
 
+  // === Tìm kiếm ===
+  Vector<int> searchUserByName(const std::string &keyword) const;
+
+  // === Thuật toán lõi (BFS) ===
+  HashSet<int> getDirectConnections(int userID) const;
+  HashSet<int> getFriendsOfFriends(int userID) const;
+  Vector<FriendSuggestion> suggestFriends(int userID,
+                                          int maxSuggestions = 5) const;
   void printSuggestions(int userID, int maxSuggestions = 5) const;
+
+  // === Thống kê đồ thị ===
+  void printGraphStats() const;
+
+  // === Export kết quả ra file ===
+  bool exportSuggestions(int userID, int maxSuggestions,
+                         const std::string &filepath) const;
+  bool exportGraphStats(const std::string &filepath) const;
+  bool exportUserConnections(int userID, const std::string &filepath) const;
+
+  // === Đo hiệu suất ===
+  void measurePerformance(int testUserID) const;
+
+  // === Helpers ===
+  bool userExists(int userID) const;
+  std::string getUserName(int userID) const;
+  int getUserCount() const;
+  int getEdgeCount() const;
 };

@@ -4,6 +4,7 @@ CXXFLAGS := -std=c++17 -Wall -Wextra -O2
 SRCDIR   := src
 BUILDDIR := build
 
+HEADERS  := $(wildcard $(SRCDIR)/*.h)
 SRCS     := $(wildcard $(SRCDIR)/*.cpp)
 OBJS     := $(patsubst $(SRCDIR)/%.cpp,$(BUILDDIR)/%.o,$(SRCS))
 
@@ -22,7 +23,7 @@ all: $(TARGET)
 $(TARGET): $(OBJS)
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
-$(BUILDDIR)/%.o: $(SRCDIR)/%.cpp $(SRCDIR)/SocialMedia.h
+$(BUILDDIR)/%.o: $(SRCDIR)/%.cpp $(HEADERS)
 	$(MKDIR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 

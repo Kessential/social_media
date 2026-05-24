@@ -87,4 +87,19 @@ void HoareQuicksort(Vector<T> &arr, int low, int high, Compare comp) {
 template <typename T> void HoareQuicksort(Vector<T> &arr, int low, int high) {
   HoareQuicksort(arr, low, high, [](const T &a, const T &b) { return a < b; });
 }
+
+// Overload thuận tiện: sort toàn bộ Vector với comparator tùy chỉnh
+template <typename T, typename Compare>
+void sort(Vector<T> &arr, Compare comp) {
+  if (arr.size() <= 1)
+    return;
+  HoareQuicksort(arr, 0, static_cast<int>(arr.size()) - 1, comp);
+}
+
+// Overload thuận tiện: sort toàn bộ Vector tăng dần
+template <typename T> void sort(Vector<T> &arr) {
+  if (arr.size() <= 1)
+    return;
+  HoareQuicksort(arr, 0, static_cast<int>(arr.size()) - 1);
+}
 } // namespace Sort
