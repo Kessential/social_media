@@ -3,6 +3,9 @@
 #include <iostream>
 #include <limits>
 #include <string>
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 // Xóa buffer input
 void clearInput() {
@@ -17,6 +20,10 @@ int readInt(const std::string &prompt) {
     std::cout << prompt;
     if (std::cin >> val) {
       return val;
+    }
+    if (std::cin.eof()) {
+      std::cerr << "\n[LOI] Het du lieu dau vao!\n";
+      exit(0);
     }
     std::cout << "[LOI] Vui long nhap so nguyen!\n";
     clearInput();
@@ -55,6 +62,9 @@ void printMenu() {
 }
 
 int main() {
+  #ifdef _WIN32
+  SetConsoleOutputCP(CP_UTF8);
+  #endif
   SocialMedia network;
   bool running = true;
 

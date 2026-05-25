@@ -95,8 +95,8 @@ public:
 
   // Move constructor
   HashMap(HashMap &&other) noexcept
-      : table(other.table), bucketCount(other.bucketCount),
-        count(other.count), maxLoadFactor(other.maxLoadFactor) {
+      : table(other.table), bucketCount(other.bucketCount), count(other.count),
+        maxLoadFactor(other.maxLoadFactor) {
     other.table = new HashNode *[16]();
     other.bucketCount = 16;
     other.count = 0;
@@ -174,9 +174,6 @@ public:
   }
 
   V &operator[](const K &key) {
-    if (static_cast<float>(count) / bucketCount >= maxLoadFactor) {
-      rehash(bucketCount * 2);
-    }
 
     size_t idx = getBucketIndex(key);
     HashNode *curr = table[idx];
@@ -185,6 +182,11 @@ public:
         return curr->value; // Nếu có sẵn, trả về luôn
       }
       curr = curr->next;
+    }
+
+    if (static_cast<float>(count) / bucketCount >= maxLoadFactor) {
+      rehash(bucketCount * 2);
+      idx = getBucketIndex(key);
     }
 
     // Nếu chưa có, tự động tạo node mới với giá trị mặc định V()

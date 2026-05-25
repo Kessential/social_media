@@ -10,6 +10,10 @@
 // ============================================================================
 
 void SocialMedia::addUser(int userID, const std::string &name) {
+  if (users.contains(userID)) {
+    std::cerr << "[CANH BAO] User ID " << userID << " da ton tai, bo qua!\n";
+    return;
+  }
   users.put(userID, name);
 }
 
@@ -19,8 +23,8 @@ void SocialMedia::addConnection(int userID_1, int userID_2) {
     return;
   }
   if (!users.contains(userID_1) || !users.contains(userID_2)) {
-    std::cerr << "[CANH BAO] Ket noi toi nguoi dung khong ton tai: "
-              << userID_1 << "<->" << userID_2 << "\n";
+    std::cerr << "[CANH BAO] Ket noi toi nguoi dung khong ton tai: " << userID_1
+              << "<->" << userID_2 << "\n";
     return;
   }
   adjList[userID_1].insert(userID_2);
@@ -73,10 +77,18 @@ bool SocialMedia::loadUsersFromFile(const std::string &filepath) {
   }
   std::string line;
   while (std::getline(file, line)) {
+    if (line.empty())
+      continue;
     std::stringstream ss(line);
     std::string strUserID, name;
     if (std::getline(ss, strUserID, ',') && std::getline(ss, name)) {
-      addUser(std::stoi(strUserID), name);
+      try {
+        int id = std::stoi(strUserID);
+        addUser(id, name);
+      } catch (const std::exception &e) {
+        std::cerr << "[CANH BAO] Dong khong hop le, bo qua: \"" << line
+                  << "\"\n";
+      }
     }
   }
   return true;
@@ -90,10 +102,14 @@ bool SocialMedia::loadConnectionsFromFile(const std::string &filepath) {
   }
   std::string line;
   while (std::getline(file, line)) {
+    if (line.empty())
+      continue;
     std::stringstream ss(line);
     int userID_1, userID_2;
     if (ss >> userID_1 >> userID_2) {
       addConnection(userID_1, userID_2);
+    } else {
+      std::cerr << "[CANH BAO] Dong khong hop le, bo qua: \"" << line << "\"\n";
     }
   }
   return true;
@@ -131,31 +147,36 @@ void SocialMedia::listUsers() const {
 
   size_t pageSize = 50;
   size_t totalPages = (totalUsers + pageSize - 1) / pageSize;
-  if (totalPages == 0) totalPages = 1;
+  if (totalPages == 0)
+    totalPages = 1;
 
   size_t currentPage = 0;
   while (true) {
     std::cout << "\n==================================================\n";
     std::cout << "              DANH SACH NGUOI DUNG                \n";
-    std::cout << "  Trang " << (currentPage + 1) << "/" << totalPages 
-              << " (Hien thi " << (currentPage * pageSize + 1) << " - " 
-              << std::min((currentPage + 1) * pageSize, totalUsers) << " / " << totalUsers << " nguoi)\n";
+    std::cout << "  Trang " << (currentPage + 1) << "/" << totalPages
+              << " (Hien thi " << (currentPage * pageSize + 1) << " - "
+              << std::min((currentPage + 1) * pageSize, totalUsers) << " / "
+              << totalUsers << " nguoi)\n";
     std::cout << "--------------------------------------------------\n";
-    std::cout << "  " << std::left << std::setw(12) << "ID" << std::setw(25) << "Ten" << "So ban be\n";
+    std::cout << "  " << std::left << std::setw(12) << "ID" << std::setw(25)
+              << "Ten" << "So ban be\n";
     std::cout << "--------------------------------------------------\n";
 
     size_t start = currentPage * pageSize;
     size_t end = start + pageSize;
-    if (end > totalUsers) end = totalUsers;
+    if (end > totalUsers)
+      end = totalUsers;
 
     for (size_t i = start; i < end; ++i) {
-      std::cout << "  " << std::left << std::setw(12) << userList[i].userID 
-                << std::setw(25) << userList[i].username 
+      std::cout << "  " << std::left << std::setw(12) << userList[i].userID
+                << std::setw(25) << userList[i].username
                 << userList[i].friendCount << "\n";
     }
 
     std::cout << "--------------------------------------------------\n";
-    std::cout << "Phim tat: [n] Trang sau | [p] Trang truoc | [Enter] Ve menu chinh\n";
+    std::cout << "Phim tat: [n] Trang sau | [p] Trang truoc | [Enter] Ve menu "
+                 "chinh\n";
     std::cout << "Lua chon cua ban: ";
     std::string choice;
     std::getline(std::cin, choice);
@@ -187,26 +208,28 @@ void SocialMedia::printUserInfo(int userID) const {
   std::cout << "              THONG TIN NGUOI DUNG               \n";
   std::cout << "==================================================\n";
   std::cout << std::left << std::setw(15) << "  ID:" << userID << "\n";
-  std::cout << std::left << std::setw(15) << "  Ten:" << users.get(userID) << "\n";
+  std::cout << std::left << std::setw(15) << "  Ten:" << users.get(userID)
+            << "\n";
 
   if (adjList.contains(userID)) {
     const HashSet<int> &friends = adjList.get(userID);
-    std::cout << std::left << std::setw(15) << "  So ban be:" << friends.size() << "\n";
+    std::cout << std::left << std::setw(15) << "  So ban be:" << friends.size()
+              << "\n";
     std::cout << "==================================================\n";
     std::cout << "                DANH SACH BAN BE                  \n";
     std::cout << "--------------------------------------------------\n";
-    std::cout << "  " << std::left << std::setw(6) << "STT" << std::setw(12) << "ID" << "Ten\n";
+    std::cout << "  " << std::left << std::setw(6) << "STT" << std::setw(12)
+              << "ID" << "Ten\n";
     std::cout << "--------------------------------------------------\n";
-    
+
     Vector<int> sortedFriends = friends.toVector();
     Sort::sort(sortedFriends);
 
     for (size_t i = 0; i < sortedFriends.size(); ++i) {
       int fid = sortedFriends[i];
       std::string fname = users.contains(fid) ? users.get(fid) : "User co lap";
-      std::cout << "  " << std::left << std::setw(6) << (i + 1)
-                << std::setw(12) << fid
-                << fname << "\n";
+      std::cout << "  " << std::left << std::setw(6) << (i + 1) << std::setw(12)
+                << fid << fname << "\n";
     }
     std::cout << "--------------------------------------------------\n";
   } else {
@@ -281,8 +304,8 @@ HashSet<int> SocialMedia::getFriendsOfFriends(int userID) const {
   return friendsOfFriends;
 }
 
-Vector<FriendSuggestion>
-SocialMedia::suggestFriends(int userID, int maxSuggestions) const {
+Vector<FriendSuggestion> SocialMedia::suggestFriends(int userID,
+                                                     int maxSuggestions) const {
   if (!adjList.contains(userID))
     return Vector<FriendSuggestion>();
 
@@ -303,20 +326,22 @@ SocialMedia::suggestFriends(int userID, int maxSuggestions) const {
 
   // Xây dựng danh sách kết quả
   Vector<FriendSuggestion> results;
-  mutualMap.forEach(
-      [&](const int &candidateID, const Vector<int> &mutuals) {
-        FriendSuggestion fs;
-        fs.suggestedUserID = candidateID;
-        fs.mutualConnectionsCount = static_cast<int>(mutuals.size());
-        fs.mutualConnectionsIDs = mutuals;
-        results.push_back(fs);
-      });
+  mutualMap.forEach([&](const int &candidateID, const Vector<int> &mutuals) {
+    FriendSuggestion fs;
+    fs.suggestedUserID = candidateID;
+    fs.mutualConnectionsCount = static_cast<int>(mutuals.size());
+    fs.mutualConnectionsIDs = mutuals;
+    results.push_back(fs);
+  });
 
   // Sắp xếp giảm dần theo số bạn chung
-  Sort::sort(results,
-             [](const FriendSuggestion &a, const FriendSuggestion &b) {
-               return a.mutualConnectionsCount > b.mutualConnectionsCount;
-             });
+  Sort::sort(results, [](const FriendSuggestion &a, const FriendSuggestion &b) {
+    return a.mutualConnectionsCount > b.mutualConnectionsCount;
+  });
+
+  if (maxSuggestions <= 0) {
+    return Vector<FriendSuggestion>();
+  }
 
   if (static_cast<int>(results.size()) > maxSuggestions) {
     results.resize(static_cast<size_t>(maxSuggestions));
@@ -341,47 +366,56 @@ void SocialMedia::printSuggestions(int userID, int maxSuggestions) const {
   size_t totalSuggestions = suggestions.size();
   size_t pageSize = 50;
   size_t totalPages = (totalSuggestions + pageSize - 1) / pageSize;
-  if (totalPages == 0) totalPages = 1;
+  if (totalPages == 0)
+    totalPages = 1;
   size_t currentPage = 0;
 
   while (true) {
     std::cout << "\n==================================================\n";
     std::cout << "              GOI Y KET BAN CHO:                 \n";
     std::cout << "  " << users.get(userID) << " (ID: " << userID << ")\n";
-    std::cout << "  Trang " << (currentPage + 1) << "/" << totalPages 
-              << " (Hien thi " << (currentPage * pageSize + 1) << " - " 
-              << std::min((currentPage + 1) * pageSize, totalSuggestions) << " / " << totalSuggestions << " goi y)\n";
+    std::cout << "  Trang " << (currentPage + 1) << "/" << totalPages
+              << " (Hien thi " << (currentPage * pageSize + 1) << " - "
+              << std::min((currentPage + 1) * pageSize, totalSuggestions)
+              << " / " << totalSuggestions << " goi y)\n";
     std::cout << "==================================================\n";
 
     size_t start = currentPage * pageSize;
     size_t end = start + pageSize;
-    if (end > totalSuggestions) end = totalSuggestions;
+    if (end > totalSuggestions)
+      end = totalSuggestions;
 
     for (size_t i = start; i < end; ++i) {
       const FriendSuggestion &s = suggestions[i];
-      std::string sname = users.contains(s.suggestedUserID) ? users.get(s.suggestedUserID) : "Unknown User";
+      std::string sname = users.contains(s.suggestedUserID)
+                              ? users.get(s.suggestedUserID)
+                              : "Unknown User";
 
       std::cout << "  " << std::right << std::setw(3) << (i + 1) << ". "
-                << std::left << std::setw(25) << sname 
+                << std::left << std::setw(25) << sname
                 << " (ID: " << std::setw(8) << s.suggestedUserID << ") | "
                 << "Ban chung: " << s.mutualConnectionsCount << "\n";
-      
+
       std::cout << "     [Goi y qua: ";
       size_t printCount = std::min(s.mutualConnectionsIDs.size(), size_t(3));
       for (size_t j = 0; j < printCount; ++j) {
         int mid = s.mutualConnectionsIDs[j];
-        std::string mname = users.contains(mid) ? users.get(mid) : std::to_string(mid);
+        std::string mname =
+            users.contains(mid) ? users.get(mid) : std::to_string(mid);
         std::cout << mname;
-        if (j + 1 < printCount) std::cout << ", ";
+        if (j + 1 < printCount)
+          std::cout << ", ";
       }
       if (s.mutualConnectionsIDs.size() > printCount) {
-        std::cout << " va " << (s.mutualConnectionsIDs.size() - printCount) << " nguoi khac";
+        std::cout << " va " << (s.mutualConnectionsIDs.size() - printCount)
+                  << " nguoi khac";
       }
       std::cout << "]\n\n";
     }
 
     std::cout << "--------------------------------------------------\n";
-    std::cout << "Phim tat: [n] Trang sau | [p] Trang truoc | [Enter] Ve menu chinh\n";
+    std::cout << "Phim tat: [n] Trang sau | [p] Trang truoc | [Enter] Ve menu "
+                 "chinh\n";
     std::cout << "Lua chon cua ban: ";
     std::string choice;
     std::getline(std::cin, choice);
@@ -402,8 +436,6 @@ void SocialMedia::printSuggestions(int userID, int maxSuggestions) const {
     }
   }
 }
-
-
 
 // ============================================================================
 // Thống kê đồ thị
@@ -438,7 +470,8 @@ void SocialMedia::printGraphStats() const {
       ++isolatedCount;
   });
 
-  double avgDegree = totalUsers > 0 ? static_cast<double>(degreeSum) / totalUsers : 0.0;
+  double avgDegree =
+      totalUsers > 0 ? static_cast<double>(degreeSum) / totalUsers : 0.0;
 
   std::cout << "\n=== THONG KE DO THI ===\n";
   std::cout << std::string(40, '-') << "\n";
@@ -571,8 +604,7 @@ bool SocialMedia::exportGraphStats(const std::string &filepath) const {
     int deg = 0;
     if (adjList.contains(uid))
       deg = static_cast<int>(adjList.get(uid).size());
-    file << "ID: " << uid << " | Ten: " << name << " | Ban be: " << deg
-         << "\n";
+    file << "ID: " << uid << " | Ten: " << name << " | Ban be: " << deg << "\n";
   });
 
   file.close();
@@ -644,8 +676,9 @@ void SocialMedia::measurePerformance(int testUserID) const {
     auto end = std::chrono::high_resolution_clock::now();
     auto duration =
         std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    std::cout << "BFS (ban cua ban):       " << std::setw(10) << duration.count()
-              << " us | Tim thay: " << fof.size() << " nguoi\n";
+    std::cout << "BFS (ban cua ban):       " << std::setw(10)
+              << duration.count() << " us | Tim thay: " << fof.size()
+              << " nguoi\n";
   }
 
   // 2. Gợi ý kết bạn
@@ -655,24 +688,29 @@ void SocialMedia::measurePerformance(int testUserID) const {
     auto end = std::chrono::high_resolution_clock::now();
     auto duration =
         std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    std::cout << "Goi y ket ban (top 10):  " << std::setw(10) << duration.count()
-              << " us | Ket qua: " << suggestions.size() << " goi y\n";
+    std::cout << "Goi y ket ban (top 10):  " << std::setw(10)
+              << duration.count() << " us | Ket qua: " << suggestions.size()
+              << " goi y\n";
   }
 
   // 3. Export gợi ý kết bạn ra file
   {
     auto start = std::chrono::high_resolution_clock::now();
+#ifdef _WIN32
+    exportSuggestions(testUserID, 10, "NUL");
+#else
     exportSuggestions(testUserID, 10, "/dev/null");
+#endif
     auto end = std::chrono::high_resolution_clock::now();
     auto duration =
         std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    std::cout << "Export goi y (top 10):   " << std::setw(10) << duration.count()
-              << " us\n";
+    std::cout << "Export goi y (top 10):   " << std::setw(10)
+              << duration.count() << " us\n";
   }
 
   std::cout << std::string(50, '-') << "\n";
-  std::cout << "Tong so nguoi dung: " << users.size() << " | Tong so ket noi: "
-            << getEdgeCount() << "\n";
+  std::cout << "Tong so nguoi dung: " << users.size()
+            << " | Tong so ket noi: " << getEdgeCount() << "\n";
 }
 
 // ============================================================================
@@ -689,15 +727,12 @@ std::string SocialMedia::getUserName(int userID) const {
   return "";
 }
 
-int SocialMedia::getUserCount() const {
-  return static_cast<int>(users.size());
-}
+int SocialMedia::getUserCount() const { return static_cast<int>(users.size()); }
 
 int SocialMedia::getEdgeCount() const {
   int total = 0;
-  adjList.forEach(
-      [&](const int &, const HashSet<int> &neighbors) {
-        total += static_cast<int>(neighbors.size());
-      });
+  adjList.forEach([&](const int &, const HashSet<int> &neighbors) {
+    total += static_cast<int>(neighbors.size());
+  });
   return total / 2; // Mỗi cạnh được đếm 2 lần (vô hướng)
 }

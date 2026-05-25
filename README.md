@@ -15,7 +15,7 @@ Dự án này là một hệ thống giả lập mạng xã hội có quy mô tr
 3. [Các Thuật Toán Cốt Lõi](#các-thuật-toán-cốt-lõi)
 4. [Kiến Trúc Mã Nguồn & Sơ Đồ Tổ Chức](#kiến-trúc-mã-nguồn--sơ-đồ-tổ-chức)
 5. [Hướng Dẫn Cài Đặt & Chạy Dự Án](#hướng-dẫn-cài-đặt--chạy-dự-án)
-6. [Kịch Bản Thử Nghiệm Đặc Biệt (17 Edge-case Test Cases)](#kịch-bản-thử-nghiệm-đặc-biệt-17-edge-case-test-cases)
+6. [Kịch Bản Thử Nghiệm Đặc Biệt (31 Edge-case Test Cases)](#kịch-bản-thử-nghiệm-đặc-biệt-31-edge-case-test-cases)
 7. [Hướng Dẫn Sử Dụng Các Tính Năng](#hướng-dẫn-sử-dụng-các-tính-năng)
 8. [Đánh Giá Hiệu Năng Thực Tế (Benchmark)](#đánh-giá-hiệu-năng-thực-tế-benchmark)
 
@@ -58,6 +58,15 @@ Hệ thống sử dụng thuật toán **BFS (Breadth-First Search)** để qué
   * **Median-of-Three**: Chọn phần tử chốt (pivot) bằng trung vị của 3 phần tử (đầu, giữa, cuối) giúp tránh rơi vào trường hợp tệ nhất $O(N^2)$ khi dữ liệu đã được sắp xếp sẵn.
   * **Insertion Sort Cutoff**: Khi kích thước mảng con cần sắp xếp nhỏ hơn $10$ phần tử, thuật toán tự động chuyển sang sắp xếp chèn (Insertion Sort) nhằm giảm thiểu chi phí gọi đệ quy sâu, tận dụng tối đa tính cục bộ của bộ nhớ đệm (cache locality).
   * **Đệ quy tối ưu đuôi (Tail Call Optimization)**: Tiết kiệm không gian Stack xuống còn $O(\log N)$ trong mọi kịch bản.
+
+### 🔹 6. Các Cơ Chế Bảo Vệ & Tính Ổn Định Cao Cấp (Mới Cập Nhật)
+Hệ thống đã được nâng cấp toàn diện về mặt an toàn luồng dữ liệu, quản lý bộ nhớ và kiểm thử biên tự động nhằm đảm bảo không bao giờ xảy ra lỗi sập (crash) hoặc rò rỉ bộ nhớ:
+* **Khắc phục lỗi Rehash trong `HashMap`**: Trong phương thức chèn phần tử `operator[]`, nếu việc chèn làm tăng hệ số tải vượt mức $0.75$, hệ thống sẽ thực hiện `rehash` để nhân đôi kích thước bucket, đồng thời **tính toán lại chỉ mục bucket chính xác** (`idx = getBucketIndex(key)`) trước khi cấp phát node mới. Điều này loại bỏ hoàn toàn các lỗi ghi nhớ sai địa chỉ vùng nhớ gây crash hệ thống ở phiên bản cũ.
+* **Ngăn chặn crash cấp phát bộ nhớ âm**: Hàm `suggestFriends` được bảo vệ bằng kiểm tra điều kiện đầu vào nghiêm ngặt `maxSuggestions <= 0`, trả về một mảng rỗng `Vector<FriendSuggestion>()` ngay lập tức, ngăn ngừa lỗi ép kiểu ngầm định sang số nguyên không dấu `size_t` cực lớn gây lỗi tràn bộ nhớ Stack/Heap (`std::bad_alloc`).
+* **Bẫy lỗi CSV Parser mạnh mẽ**: Bộ nạp file `loadUsersFromFile` và `loadConnectionsFromFile` sử dụng các cấu trúc `try-catch` bẫy ngoại lệ đối với hàm chuyển đổi số `std::stoi` để tự động phát hiện, cảnh báo và bỏ qua các dòng bị lỗi định dạng (ví dụ như dòng tiêu đề `userID,name` hoặc ID là chuỗi chữ `abc`), đồng thời bỏ qua hoàn toàn các dòng trống xen kẽ một cách trơn tru.
+* **Tương thích hoàn toàn với Windows UTF-8**: Khởi tạo console hiển thị chuẩn UTF-8 bằng cách gọi hàm hệ thống `SetConsoleOutputCP(CP_UTF8)` từ thư viện `<windows.h>` trên Windows. Cho phép in và xuất báo cáo tên Tiếng Việt đầy đủ có dấu ra màn hình CLI một cách hoàn hảo.
+* **Bẫy lặp vô hạn EOF (End of File)**: Hàm đọc đầu vào số nguyên `readInt()` kiểm tra cờ `std::cin.eof()` để tự động dừng và thoát chương trình an toàn khi chạy kiểm thử tự động bằng luồng pipe đầu vào bị đóng đột ngột, triệt tiêu lỗi lặp vô hạn gây treo CPU.
+* **Makefile Safe Clean**: Sửa đổi lệnh `make clean` trên môi trường Windows sử dụng khối điều kiện `if (Test-Path ...)` trước khi xóa thư mục `build/` và tệp thực thi. Điều này giúp tiến trình dọn dẹp không báo lỗi thất bại lên công cụ `make` khi tệp chưa tồn tại.
 
 ---
 
@@ -122,12 +131,12 @@ social_media/
 │   ├── CustomSort.h              # QuickSort (Hoare Partition + Median-of-Three)
 │   ├── SocialMedia.h             # Lớp quản lý đồ thị mạng xã hội
 │   ├── SocialMedia.cpp           # Hiện thực hóa các phương thức của SocialMedia
-│   └── main.cpp                  # Chương trình tương tác dòng lệnh (CLI CLI)
+│   └── main.cpp                  # Chương trình tương tác dòng lệnh (CLI)
 ├── scripts/                      # Thư mục chứa tập lệnh sinh dữ liệu & Testcases
 │   ├── generate_dataset.py       # Script Python tạo đồ thị ngẫu nhiên quy mô lớn
 │   ├── users.csv                 # Tệp dữ liệu người dùng được sinh ra (10,500+ dòng)
 │   ├── edges.txt                 # Tệp chứa các cạnh liên kết quan hệ (110,000+ dòng)
-│   └── testcases/                # Chứa 17 bộ kịch bản kiểm thử biên đặc biệt
+│   └── testcases/                # Chứa 31 bộ kịch bản kiểm thử biên đặc biệt
 │       ├── tc01_isolated_user/
 │       ├── tc02_single_friend/
 │       └── ...
@@ -165,7 +174,7 @@ python3 scripts/generate_dataset.py
 **Kết quả sinh ra sẽ gồm:**
 * `scripts/users.csv`: Danh sách $10,500$ người dùng với tên ngẫu nhiên thuần Việt (Nguyễn Văn An, Lê Thị Mai...) xen lẫn tiếng Anh.
 * `scripts/edges.txt`: Danh sách $111,973$ cạnh quan hệ kết nối bạn bè không trùng lặp.
-* Tạo ra $17$ thư mục testcase đặc biệt nằm trong `scripts/testcases/`.
+* Tạo ra $31$ thư mục testcase đặc biệt nằm trong `scripts/testcases/`.
 
 ### 🚀 Bước 3: Chạy chương trình chính
 Sau khi biên dịch và sinh dữ liệu thành công, khởi chạy chương trình bằng lệnh:
@@ -176,8 +185,8 @@ Sau khi biên dịch và sinh dữ liệu thành công, khởi chạy chương t
 
 ---
 
-## 6. Kịch Bản Thử Nghiệm Đặc Biệt (17 Edge-case Test Cases)
-Hệ thống đi kèm với 17 kịch bản kiểm thử tự động cực kỳ nghiêm ngặt nhằm chứng minh tính ổn định tuyệt đối trước dữ liệu biên hoặc dữ liệu lỗi:
+## 6. Kịch Bản Thử Nghiệm Đặc Biệt (31 Edge-case Test Cases)
+Hệ thống đi kèm với 31 kịch bản kiểm thử tự động cực kỳ nghiêm ngặt nhằm chứng minh tính ổn định tuyệt đối trước dữ liệu biên hoặc dữ liệu lỗi:
 
 | Mã Testcase | Tên Kịch Bản | Mục Tiêu Kiểm Thử |
 | :--- | :--- | :--- |
@@ -198,6 +207,20 @@ Hệ thống đi kèm với 17 kịch bản kiểm thử tự động cực kỳ
 | **TC15** | `tc15_nonexistent_user` | Truy vấn thông tin/gợi ý cho ID người dùng hoàn toàn không tồn tại trong hệ thống. |
 | **TC16** | `tc16_empty_dataset` | Tải cơ sở dữ liệu trống hoàn toàn (0 người dùng, 0 cạnh). Không bị lỗi chia cho 0. |
 | **TC17** | `tc17_malformed_csv` | File CSV chứa tiêu đề chữ hoặc ID bị sai định dạng chữ (`abc`), bẫy lỗi ngoại lệ chuyển đổi kiểu. |
+| **TC18** | `tc18_remove_then_suggest` | Xóa người dùng rồi gợi ý kết bạn (stale reference). Đảm bảo cập nhật đối xứng danh sách kề và không chứa ID đã xóa. |
+| **TC19** | `tc19_remove_connection_bfs` | Xóa kết nối rồi kiểm tra BFS cập nhật. Xác nhận BFS từ đỉnh nguồn không đi qua cạnh đã xóa. |
+| **TC20** | `tc20_connection_nonexistent` | Thêm liên kết chứa người dùng không tồn tại. Đảm bảo in cảnh báo, bỏ qua và không bị sập. |
+| **TC21** | `tc21_file_not_found` | Tải tập tin không tồn tại. Đảm bảo hàm nạp file trả về `false`, ghi nhận lỗi nhưng chương trình vẫn chạy. |
+| **TC22** | `tc22_blank_lines_whitespace` | Dữ liệu CSV và edges chứa các dòng trống hoặc khoảng trắng thừa. Bộ phân tích bỏ qua dòng trống an toàn. |
+| **TC23** | `tc23_extreme_user_ids` | ID người dùng cực hạn (như ID `0`, số âm `-1`, hoặc `INT_MAX`). Kiểm tra tính ổn định của hàm băm trong `HashMap`. |
+| **TC24** | `tc24_max_suggestions_zero` | Chức năng gợi ý bạn bè với `maxSuggestions` bằng 0. Hệ thống trả về mảng rỗng ngay lập tức. |
+| **TC25** | `tc25_cycle_graph` | Đồ thị vòng tròn khép kín ($1-2-3-4-1$). Kiểm tra tính chính xác của bộ đếm bạn chung khi có nhiều đường đi đến nút bạn của bạn. |
+| **TC26** | `tc26_empty_operations` | Thực hiện mọi thao tác đồ thị (thống kê, hiển thị, gợi ý...) khi cơ sở dữ liệu có người dùng nhưng hoàn toàn không có kết nối. |
+| **TC27** | `tc27_special_chars_name` | Tên người dùng chứa ký tự đặc biệt (dấu phẩy `,` hoặc ngoặc kép `"`). Xác thực hành vi của bộ parser đơn giản. |
+| **TC28** | `tc28_duplicate_user_id` | ID người dùng bị lặp lại trong tập tin CSV. Hệ thống giữ lại thông tin người dùng đầu tiên và bỏ qua dòng sau. |
+| **TC29** | `tc29_user_no_adjlist` | Người dùng có trong danh sách nhưng không tồn tại trong danh sách kề `adjList`. Hệ thống hoạt động bình thường mà không bị crash. |
+| **TC30** | `tc30_malformed_edges` | File liên kết chứa dòng sai định dạng (thừa cột dữ liệu, chữ cái, thiếu ID). Bỏ qua dòng lỗi và in cảnh báo. |
+| **TC31** | `tc31_add_remove_symmetry` | Thao tác thêm rồi xóa kết nối liên tục. Xác nhận tính chất đối xứng hai chiều của danh sách kề được bảo toàn trọn vẹn. |
 
 ---
 
