@@ -19,6 +19,17 @@ struct FriendSuggestion {
   Vector<int> mutualConnectionsIDs;
 };
 
+struct GraphStats {
+  int totalUsers = 0;
+  int totalEdges = 0;
+  int maxDegree = 0;
+  int maxDegreeUser = -1;
+  int minDegree = 0;
+  int minDegreeUser = -1;
+  int isolatedCount = 0;
+  double avgDegree = 0.0;
+};
+
 class SocialMedia {
 private:
   HashMap<int, std::string> users;
@@ -26,7 +37,7 @@ private:
 
 public:
   // === Quản lý người dùng & kết nối ===
-  void addUser(int userID, const std::string &name);
+  bool addUser(int userID, const std::string &name);
   void addConnection(int userID_1, int userID_2);
   void removeUser(int userID);
   void removeConnection(int userID_1, int userID_2);
@@ -49,6 +60,7 @@ public:
                                           int maxSuggestions = 5) const;
   void printSuggestions(int userID, int maxSuggestions = 5) const;
 
+  GraphStats computeGraphStats() const;
   // === Thống kê đồ thị ===
   void printGraphStats() const;
 

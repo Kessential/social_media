@@ -11,7 +11,7 @@ OBJS     := $(patsubst $(SRCDIR)/%.cpp,$(BUILDDIR)/%.o,$(SRCS))
 ifeq ($(OS),Windows_NT)
     TARGET := SocialMedia.exe
     MKDIR   = powershell -NoProfile -Command "New-Item -ItemType Directory -Force -Path $(BUILDDIR) | Out-Null"
-    RMCMD   = powershell -NoProfile -Command "Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $(BUILDDIR),$(TARGET)"
+    RMCMD   = powershell -NoProfile -Command "Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $(BUILDDIR),$(TARGET); exit 0"
 else
     TARGET := SocialMedia
     MKDIR   = mkdir -p $(BUILDDIR)

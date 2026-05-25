@@ -62,9 +62,9 @@ void printMenu() {
 }
 
 int main() {
-  #ifdef _WIN32
+#ifdef _WIN32
   SetConsoleOutputCP(CP_UTF8);
-  #endif
+#endif
   SocialMedia network;
   bool running = true;
 
@@ -104,9 +104,10 @@ int main() {
       int id = readInt("Nhap User ID: ");
       clearInput();
       std::string name = readLine("Nhap ten: ");
-      network.addUser(id, name);
-      std::cout << "[OK] Da them nguoi dung " << name << " (ID: " << id
-                << ").\n";
+      if (network.addUser(id, name)) {
+        std::cout << "[OK] Da them nguoi dung " << name << " (ID: " << id
+                  << ").\n";
+      }
       break;
     }
 
@@ -147,7 +148,8 @@ int main() {
       if (results.empty()) {
         std::cout << "\n[Thong bao] Khong tim thay nguoi dung nao phu hop!\n";
       } else {
-        std::cout << "\n[OK] Tim thay " << results.size() << " nguoi dung phu hop:\n";
+        std::cout << "\n[OK] Tim thay " << results.size()
+                  << " nguoi dung phu hop:\n";
         for (size_t i = 0; i < results.size(); ++i) {
           network.printUserInfo(results[i]);
         }
@@ -194,27 +196,31 @@ int main() {
         std::cout << "\n==================================================\n";
         std::cout << "        BAN CUA BAN (BFS, Do sau 2) cua:\n";
         std::cout << "  " << network.getUserName(id) << " (ID: " << id << ")\n";
-        std::cout << "  Trang " << (currentPage + 1) << "/" << totalPages 
-                  << " (Hien thi " << (currentPage * pageSize + 1) << " - " 
-                  << std::min((currentPage + 1) * pageSize, totalFoF) << " / " << totalFoF << " nguoi)\n";
+        std::cout << "  Trang " << (currentPage + 1) << "/" << totalPages
+                  << " (Hien thi " << (currentPage * pageSize + 1) << " - "
+                  << std::min((currentPage + 1) * pageSize, totalFoF) << " / "
+                  << totalFoF << " nguoi)\n";
         std::cout << "--------------------------------------------------\n";
-        std::cout << "  " << std::left << std::setw(6) << "STT" << std::setw(12) << "ID" << "Ten\n";
+        std::cout << "  " << std::left << std::setw(6) << "STT" << std::setw(12)
+                  << "ID" << "Ten\n";
         std::cout << "--------------------------------------------------\n";
 
         size_t start = currentPage * pageSize;
         size_t end = start + pageSize;
-        if (end > totalFoF) end = totalFoF;
+        if (end > totalFoF)
+          end = totalFoF;
 
         for (size_t i = start; i < end; ++i) {
           int fid = fofVector[i];
-          std::string fname = network.userExists(fid) ? network.getUserName(fid) : "User co lap";
+          std::string fname = network.userExists(fid) ? network.getUserName(fid)
+                                                      : "User co lap";
           std::cout << "  " << std::left << std::setw(6) << (i + 1)
-                    << std::setw(12) << fid
-                    << fname << "\n";
+                    << std::setw(12) << fid << fname << "\n";
         }
 
         std::cout << "--------------------------------------------------\n";
-        std::cout << "Phim tat: [n] Trang sau | [p] Trang truoc | [Enter] Ve menu chinh\n";
+        std::cout << "Phim tat: [n] Trang sau | [p] Trang truoc | [Enter] Ve "
+                     "menu chinh\n";
         std::cout << "Lua chon cua ban: ";
         std::string choice;
         std::getline(std::cin, choice);
@@ -240,6 +246,7 @@ int main() {
     case 11: {
       int id = readInt("Nhap User ID: ");
       int maxN = readInt("So luong goi y toi da: ");
+      clearInput();
       network.printSuggestions(id, maxN);
       break;
     }
@@ -262,7 +269,8 @@ int main() {
       int exportChoice = readInt("Lua chon export cua ban: ");
       clearInput();
 
-      if (exportChoice == 0) break;
+      if (exportChoice == 0)
+        break;
 
       switch (exportChoice) {
       case 1: {
@@ -272,14 +280,16 @@ int main() {
         std::string filepath =
             readLine("Nhap ten file xuat (vd: suggestions.txt): ");
         if (network.exportSuggestions(id, maxN, filepath)) {
-          std::cout << "\n[OK] Xuat thanh cong! File ket qua: " << filepath << "\n";
+          std::cout << "\n[OK] Xuat thanh cong! File ket qua: " << filepath
+                    << "\n";
         }
         break;
       }
       case 2: {
         std::string filepath = readLine("Nhap ten file xuat (vd: stats.txt): ");
         if (network.exportGraphStats(filepath)) {
-          std::cout << "\n[OK] Xuat thanh cong! File ket qua: " << filepath << "\n";
+          std::cout << "\n[OK] Xuat thanh cong! File ket qua: " << filepath
+                    << "\n";
         }
         break;
       }
@@ -289,7 +299,8 @@ int main() {
         std::string filepath =
             readLine("Nhap ten file xuat (vd: user_info.txt): ");
         if (network.exportUserConnections(id, filepath)) {
-          std::cout << "\n[OK] Xuat thanh cong! File ket qua: " << filepath << "\n";
+          std::cout << "\n[OK] Xuat thanh cong! File ket qua: " << filepath
+                    << "\n";
         }
         break;
       }

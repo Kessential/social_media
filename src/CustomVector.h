@@ -1,5 +1,6 @@
 #pragma once
 #include <cstddef>
+#include <utility>
 
 template <typename T> class Vector {
 private:
@@ -12,7 +13,7 @@ private:
       return;
     T *temp = new T[newCap];
     for (size_t i = 0; i < len; ++i) {
-      temp[i] = data[i];
+      temp[i] = std::move_if_noexcept(data[i]);
     }
     delete[] data;
     data = temp;
@@ -102,11 +103,14 @@ public:
 
   // Thay đổi kích thước Vector, khởi tạo giá trị mặc định cho phần tử mới
   void resize(size_t newLen) {
-    if (newLen > cap) {
-      grow(newLen);
-    }
-    for (size_t i = len; i < newLen; ++i) {
-      data[i] = T();
+    if (newLen < len) {
+      for (size_t i = newLen; i < len; ++i)
+        data[i] = T();
+    } else {
+      if (newLen > cap)
+        grow(newLen);
+      for (size_t i = len; i < newLen; ++i)
+        data[i] = T();
     }
     len = newLen;
   }

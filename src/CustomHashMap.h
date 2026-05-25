@@ -20,8 +20,7 @@ private:
   float maxLoadFactor;
 
   size_t getBucketIndex(const K &key) const {
-    std::hash<K> hashFn;
-    return hashFn(key) % bucketCount;
+    return std::hash<K>{}(key) % bucketCount;
   }
 
   void rehash(size_t newBucketCount) {
