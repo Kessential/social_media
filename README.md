@@ -1,4 +1,4 @@
-﻿# Mô Phỏng Mạng Xã Hội — BFS Friend Suggestion
+# Mô Phỏng Mạng Xã Hội — BFS Friend Suggestion
 
 Ứng dụng console C++ mô phỏng mạng xã hội, sử dụng thuật toán **BFS (Breadth-First Search)** để tìm "bạn của bạn" và gợi ý kết bạn dựa trên số bạn chung.
 
@@ -15,8 +15,8 @@ FS/
 │   └── printpath.py
 └── src/
     ├── main.cpp              # Entry point, menu tương tác 14 chức năng
-    ├── SocialMedia.h         # Khai báo class SocialMedia & các struct
-    ├── SocialMedia.cpp       # Toàn bộ logic nghiệp vụ
+    ├── SocialMedia.h         # Khai báo class SocialMedia, struct BFSNode, FriendSuggestion, GraphStats
+    ├── SocialMedia.cpp       # Toàn bộ logic nghiệp vụ (~764 dòng)
     ├── CustomHashMap.h       # HashMap tự cài (separate chaining, auto-rehash)
     ├── CustomHashSet.h       # HashSet tự cài (wrapper trên HashMap)
     ├── CustomVector.h        # Vector tự cài (dynamic array)
@@ -35,13 +35,13 @@ FS/
 | 3 | Thêm kết nối | Thêm cạnh vô hướng giữa hai user |
 | 4 | Xóa người dùng | Xóa user và tự động xóa toàn bộ kết nối liên quan |
 | 5 | Xóa kết nối | Xóa cạnh giữa hai user |
-| 6 | Hiển thị danh sách người dùng | Phân trang 50/trang, sắp xếp theo ID |
-| 7 | Xem thông tin người dùng | ID, tên, danh sách bạn bè có sắp xếp |
+| 6 | Hiển thị danh sách người dùng | Phân trang 50/trang, sắp xếp theo ID tăng dần, hiển thị số bạn bè |
+| 7 | Xem thông tin người dùng | ID, tên, danh sách bạn bè sắp xếp theo ID |
 | 8 | Tìm kiếm theo tên | Không phân biệt hoa/thường, tìm substring |
-| 9 | Xem bạn bè trực tiếp | Danh sách bạn bậc 1 |
-| 10 | Tìm bạn của bạn (BFS) | BFS độ sâu 2, phân trang kết quả |
-| 11 | Gợi ý kết bạn | Sắp xếp theo số bạn chung giảm dần, hiển thị tên bạn chung |
-| 12 | Thống kê đồ thị | Tổng user/cạnh, bậc TB, user nhiều/ít bạn nhất, user cô lập |
+| 9 | Xem bạn bè trực tiếp | Danh sách bạn bậc 1 kèm tên |
+| 10 | Tìm bạn của bạn (BFS) | BFS độ sâu 2, phân trang 50/trang, điều hướng [n]/[p]/[Enter] |
+| 11 | Gợi ý kết bạn | Sắp xếp giảm dần theo số bạn chung (tie-breaker: ID tăng dần), phân trang, hiển thị tối đa 3 bạn chung |
+| 12 | Thống kê đồ thị | Tổng user/cạnh, bậc TB, **tất cả** user nhiều/ít bạn nhất, user cô lập |
 | 13 | Export ra file | Export gợi ý / thống kê / thông tin user ra file `.txt` |
 | 14 | Đo hiệu suất | Benchmark BFS, gợi ý kết bạn và export (đơn vị microsecond) |
 
@@ -59,11 +59,11 @@ Toàn bộ project **không dùng STL containers** (vector, unordered_map, queue
 
 ### `HashSet<T>` — `CustomHashSet.h`
 - Wrapper mỏng trên `HashMap<T, bool>`
-- Hỗ trợ: `insert`, `contains`, `remove`, `forEach`, `toVector`
+- Hỗ trợ: `insert`, `contains`, `remove`, `forEach`, `toVector`, `size`
 
 ### `Vector<T>` — `CustomVector.h`
 - Dynamic array, tự động tăng gấp đôi capacity khi đầy
-- Hỗ trợ: `push_back`, `pop_back`, `operator[]`, `resize`, `clear`, `shrink`
+- Hỗ trợ: `push_back`, `pop_back`, `operator[]`, `resize`, `clear`, `shrink`, `empty`, `size`
 - Đầy đủ copy/move constructor & assignment operator
 
 ### `Queue<T>` — `CustomQueue.h`
@@ -76,6 +76,43 @@ Toàn bộ project **không dùng STL containers** (vector, unordered_map, queue
 - Fallback sang **Insertion Sort** khi đoạn còn ≤ 10 phần tử
 - Tail-call optimization (iterative cho nhánh lớn hơn)
 - Overload: `sort(arr)` tăng dần và `sort(arr, comparator)` tùy chỉnh
+
+---
+
+## Các struct chính
+
+### `BFSNode` — `SocialMedia.h`
+```cpp
+struct BFSNode {
+    int userID;
+    int depth;
+};
+```
+Dùng thay `std::pair<int,int>` trong hàng đợi BFS.
+
+### `FriendSuggestion` — `SocialMedia.h`
+```cpp
+struct FriendSuggestion {
+    int suggestedUserID;
+    int mutualConnectionsCount;
+    Vector<int> mutualConnectionsIDs;
+};
+```
+
+### `GraphStats` — `SocialMedia.h`
+```cpp
+struct GraphStats {
+    int totalUsers;
+    int totalEdges;
+    int maxDegree;
+    Vector<int> maxDegreeUsers; // Tất cả user có bậc cao nhất
+    int minDegree;
+    Vector<int> minDegreeUsers; // Tất cả user có bậc thấp nhất
+    int isolatedCount;
+    double avgDegree;
+};
+```
+`maxDegreeUsers` và `minDegreeUsers` lưu **toàn bộ** danh sách (không chỉ 1 user) để xử lý trường hợp nhiều user cùng bậc.
 
 ---
 
@@ -104,10 +141,18 @@ while queue không rỗng:
 1. Lấy danh sách bạn trực tiếp `directConns`
 2. Với mỗi bạn `f` trong `directConns`, duyệt bạn `fof` của `f`:
    - Nếu `fof ≠ userID` và `fof ∉ directConns` → ghi nhận `f` là bạn chung của `fof`
-3. Xây dựng `Vector<FriendSuggestion>`, sắp xếp **giảm dần** theo `mutualConnectionsCount`
+3. Xây dựng `Vector<FriendSuggestion>`, sắp xếp theo tiêu chí:
+   - **Giảm dần** theo `mutualConnectionsCount`
+   - Tie-breaker: **tăng dần** theo `suggestedUserID`
 4. Cắt kết quả về `maxSuggestions`
 
-Mỗi `FriendSuggestion` chứa: `suggestedUserID`, `mutualConnectionsCount`, `mutualConnectionsIDs`.
+Khi in ra màn hình (`printSuggestions`): mỗi gợi ý hiển thị tối đa **3 bạn chung** đầu tiên, phần còn lại ghi "và N người khác".
+
+### Thống kê đồ thị — `computeGraphStats()`
+
+- Duyệt toàn bộ `users`, tính bậc từng node qua `adjList`
+- Cập nhật `maxDegreeUsers` / `minDegreeUsers` theo dạng **Vector** để giữ tất cả user cùng bậc cực trị
+- `getEdgeCount()`: tổng kích thước `adjList` / 2 (mỗi cạnh đếm 2 lần do vô hướng)
 
 ---
 
@@ -162,7 +207,7 @@ make rebuild
 make clean
 ```
 
-Output binary: `SocialMedia.exe` (Windows) / `SocialMedia` (Linux/macOS)
+Output binary: `SocialMedia.exe` (Windows) / `SocialMedia` (Linux/macOS)  
 Object files: `build/*.o`
 
 ---
@@ -205,7 +250,7 @@ Script cũng sinh **31 test cases** vào `scripts/testcases/<tên>/`, mỗi thư
 - **ID không tồn tại**: Kiểm tra `userExists()` trước mọi thao tác
 - **Tự kết nối** (`1 1`): Bị từ chối với cảnh báo
 - **Kết nối trùng**: `HashSet` đảm bảo không có cạnh trùng lặp trong `adjList`
-- **`maxSuggestions` âm**: Trả về `Vector` rỗng, không crash
+- **`maxSuggestions` âm hoặc bằng 0**: Trả về `Vector` rỗng, không crash
 - **Windows console**: Tự động `SetConsoleOutputCP(CP_UTF8)` khi build trên Windows
 
 ---
@@ -217,7 +262,18 @@ Script cũng sinh **31 test cases** vào `scripts/testcases/<tên>/`, mỗi thư
 ║          MANG XA HOI - MO PHONG BFS             ║
 ╠═════════════════════════════════════════════════╣
 ║  1.  Tai du lieu tu file                        ║
-║  ...                                            ║
+║  2.  Them nguoi dung                            ║
+║  3.  Them ket noi                               ║
+║  4.  Xoa nguoi dung                             ║
+║  5.  Xoa ket noi                                ║
+║  6.  Hien thi danh sach nguoi dung              ║
+║  7.  Xem thong tin nguoi dung                   ║
+║  8.  Tim kiem nguoi dung theo ten               ║
+║  9.  Xem ban be truc tiep                       ║
+║ 10.  Tim ban cua ban (BFS)                      ║
+║ 11.  Goi y ket ban                              ║
+║ 12.  Thong ke do thi                            ║
+║ 13.  Export ket qua ra file                     ║
 ║ 14.  Do hieu suat                               ║
 ║  0.  Thoat                                      ║
 ╚═════════════════════════════════════════════════╝
@@ -241,18 +297,50 @@ Export goi y (top 10):         45 us
 Tong so nguoi dung: 10500 | Tong so ket noi: 103247
 ```
 
+**Thống kê đồ thị (hỗ trợ nhiều user cùng bậc):**
+```
+Lua chon cua ban: 12
+=== THONG KE DO THI ===
+----------------------------------------
+Tong so nguoi dung:    10500
+Tong so ket noi:       103247
+Bac trung binh:        19.67
+Nhieu ban nhat (312 ban): 3 nguoi
+  - Nguyen Van Hub (ID: 101)
+  - Le Thi Lien (ID: 205)
+  - Pham Quoc Viet (ID: 430)
+It ban nhat    (0 ban): 12 nguoi
+  - ...
+Nguoi dung co lap:     12
+----------------------------------------
+```
+
+**Export kết quả:**
+```
+Lua chon cua ban: 13
+╔═════════════════════════════════════════════════╗
+║               EXPORT KET QUA RA FILE            ║
+╠═════════════════════════════════════════════════╣
+║  1. Export danh sach goi y ket ban              ║
+║  2. Export bao cao thong ke do thi              ║
+║  3. Export chi tiet thong tin & ban be user     ║
+║  0. Quay lai menu chinh                         ║
+╚═════════════════════════════════════════════════╝
+```
+
 ---
 
 ## Độ phức tạp thuật toán
 
 | Thao tác | Trung bình | Tệ nhất |
-|----------|-----------|---------|
+|----------|-----------|---------| 
 | `addUser` / `addConnection` | O(1) amortized | O(n) |
 | `removeUser` | O(deg(u)) | O(n) |
 | `getFriendsOfFriends` BFS depth-2 | O(deg(u) × avg\_deg) | O(E) |
-| `suggestFriends` | O(deg(u) × avg\_deg) | O(E) |
+| `suggestFriends` | O(deg(u) × avg\_deg + k log k) | O(E + n log n) |
 | `searchUserByName` | O(n × \|keyword\|) | O(n × L) |
+| `computeGraphStats` | O(n) | O(n) |
 | `HashMap get/put/contains` | O(1) amortized | O(n) |
 | `Sort::sort` | O(n log n) | O(n²) |
 
-> n = số người dùng, E = số cạnh, deg(u) = bậc của user u, L = độ dài tên trung bình
+> n = số người dùng, E = số cạnh, deg(u) = bậc của user u, L = độ dài tên trung bình, k = số ứng viên gợi ý

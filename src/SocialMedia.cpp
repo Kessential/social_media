@@ -260,13 +260,13 @@ Vector<int> SocialMedia::searchUserByName(const std::string &keyword) const {
   Vector<int> results;
   std::string lowerKeyword = keyword;
   for (size_t i = 0; i < keyword.size(); ++i) {
-    lowerKeyword = static_cast<char>(tolower(lowerKeyword[i]));
+    lowerKeyword[i] = static_cast<char>(tolower(static_cast<unsigned char>(lowerKeyword[i])));
   }
 
   users.forEach([&](const int &userID, const std::string &name) {
     std::string lowerName = name;
     for (size_t i = 0; i < name.size(); ++i) {
-      lowerName = static_cast<char>(tolower(lowerName[i]));
+      lowerName[i] = static_cast<char>(tolower(static_cast<unsigned char>(lowerName[i])));
     }
     // Tìm substring
     if (lowerName.find(lowerKeyword) != std::string::npos) {
@@ -320,7 +320,7 @@ HashSet<int> SocialMedia::getFriendsOfFriends(int userID) const {
 
 Vector<FriendSuggestion> SocialMedia::suggestFriends(int userID,
                                                      int maxSuggestions) const {
-  if (maxSuggestions < 0 || !adjList.contains(userID))
+  if (maxSuggestions <= 0 || !adjList.contains(userID))
     return Vector<FriendSuggestion>();
 
   const HashSet<int> &directConns = adjList.get(userID);
@@ -350,8 +350,10 @@ Vector<FriendSuggestion> SocialMedia::suggestFriends(int userID,
 
   // Sắp xếp giảm dần theo số bạn chung
   Sort::sort(results, [](const FriendSuggestion &a, const FriendSuggestion &b) {
-    return a.mutualConnectionsCount > b.mutualConnectionsCount;
-  });
+    if (a.mutualConnectionsCount != b.mutualConnectionsCount)
+        return a.mutualConnectionsCount > b.mutualConnectionsCount;
+    return a.suggestedUserID < b.suggestedUserID; // tie-breaker
+});
 
   if (static_cast<int>(results.size()) > maxSuggestions) {
     results.resize(static_cast<size_t>(maxSuggestions));
@@ -360,7 +362,7 @@ Vector<FriendSuggestion> SocialMedia::suggestFriends(int userID,
 }
 
 void SocialMedia::printSuggestions(int userID, int maxSuggestions) const {
-  if (maxSuggestions < 0) {
+  if (maxSuggestions <= 0) {
     std::cerr << "[LOI] So nhap vao khong hop le!\n";
     return;
   }
@@ -467,17 +469,28 @@ GraphStats SocialMedia::computeGraphStats() const {
     if (adjList.contains(userID))
       degree = static_cast<int>(adjList.get(userID).size());
     degreeSum += degree;
+    // --- Max degree ---
     if (degree > stats.maxDegree) {
       stats.maxDegree = degree;
-      stats.maxDegreeUser = userID;
+      stats.maxDegreeUsers.clear();
+      stats.maxDegreeUsers.push_back(userID);
+    } else if (degree == stats.maxDegree) {
+      stats.maxDegreeUsers.push_back(userID);
     }
+    // --- Min degree ---
     if (degree < stats.minDegree) {
       stats.minDegree = degree;
-      stats.minDegreeUser = userID;
+      stats.minDegreeUsers.clear();
+      stats.minDegreeUsers.push_back(userID);
+    } else if (degree == stats.minDegree) {
+      stats.minDegreeUsers.push_back(userID);
     }
     if (degree == 0)
       ++stats.isolatedCount;
   });
+  if (stats.totalUsers == 0) {
+    stats.minDegree = 0;
+  }
   stats.avgDegree = stats.totalUsers > 0
                         ? static_cast<double>(degreeSum) / stats.totalUsers
                         : 0.0;
@@ -494,15 +507,27 @@ void SocialMedia::printGraphStats() const {
   std::cout << "Bac trung binh:        " << std::fixed << std::setprecision(2)
             << s.avgDegree << "\n";
 
-  if (s.maxDegreeUser != -1 && users.contains(s.maxDegreeUser))
-    std::cout << "Nguoi co nhieu ban nhat: " << users.get(s.maxDegreeUser)
-              << " (ID: " << s.maxDegreeUser << ", " << s.maxDegree
-              << " ban)\n";
+  // --- Nhieu ban nhat ---
+  if (!s.maxDegreeUsers.empty()) {
+    std::cout << "Nhieu ban nhat (" << s.maxDegree << " ban): "
+              << s.maxDegreeUsers.size() << " nguoi\n";
+    for (size_t i = 0; i < s.maxDegreeUsers.size(); ++i) {
+      int uid = s.maxDegreeUsers[i];
+      if (users.contains(uid))
+        std::cout << "  - " << users.get(uid) << " (ID: " << uid << ")\n";
+    }
+  }
 
-  if (s.minDegreeUser != -1 && users.contains(s.minDegreeUser))
-    std::cout << "Nguoi co it ban nhat:    " << users.get(s.minDegreeUser)
-              << " (ID: " << s.minDegreeUser << ", " << s.minDegree
-              << " ban)\n";
+  // --- It ban nhat ---
+  if (!s.minDegreeUsers.empty()) {
+    std::cout << "It ban nhat    (" << s.minDegree << " ban): "
+              << s.minDegreeUsers.size() << " nguoi\n";
+    for (size_t i = 0; i < s.minDegreeUsers.size(); ++i) {
+      int uid = s.minDegreeUsers[i];
+      if (users.contains(uid))
+        std::cout << "  - " << users.get(uid) << " (ID: " << uid << ")\n";
+    }
+  }
 
   std::cout << "Nguoi dung co lap:     " << s.isolatedCount << "\n";
   std::cout << std::string(40, '-') << "\n";
@@ -574,13 +599,27 @@ bool SocialMedia::exportGraphStats(const std::string &filepath) const {
   file << "Bac trung binh:        " << std::fixed << std::setprecision(2)
        << s.avgDegree << "\n";
 
-  if (s.maxDegreeUser != -1 && users.contains(s.maxDegreeUser))
-    file << "Nguoi co nhieu ban nhat: " << users.get(s.maxDegreeUser)
-         << " (ID: " << s.maxDegreeUser << ", " << s.maxDegree << " ban)\n";
+  // --- Nhieu ban nhat ---
+  if (!s.maxDegreeUsers.empty()) {
+    file << "Nhieu ban nhat (" << s.maxDegree << " ban): "
+         << s.maxDegreeUsers.size() << " nguoi\n";
+    for (size_t i = 0; i < s.maxDegreeUsers.size(); ++i) {
+      int uid = s.maxDegreeUsers[i];
+      if (users.contains(uid))
+        file << "  - " << users.get(uid) << " (ID: " << uid << ")\n";
+    }
+  }
 
-  if (s.minDegreeUser != -1 && users.contains(s.minDegreeUser))
-    file << "Nguoi co it ban nhat:    " << users.get(s.minDegreeUser)
-         << " (ID: " << s.minDegreeUser << ", " << s.minDegree << " ban)\n";
+  // --- It ban nhat ---
+  if (!s.minDegreeUsers.empty()) {
+    file << "It ban nhat    (" << s.minDegree << " ban): "
+         << s.minDegreeUsers.size() << " nguoi\n";
+    for (size_t i = 0; i < s.minDegreeUsers.size(); ++i) {
+      int uid = s.minDegreeUsers[i];
+      if (users.contains(uid))
+        file << "  - " << users.get(uid) << " (ID: " << uid << ")\n";
+    }
+  }
 
   file << "Nguoi dung co lap:     " << s.isolatedCount << "\n";
   file << std::string(40, '-') << "\n";

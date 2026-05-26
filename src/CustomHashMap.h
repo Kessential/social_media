@@ -46,7 +46,7 @@ private:
     bucketCount = newBucketCount;
   }
 
-  // Helper: deep-copy all nodes from another HashMap
+  // Deep-copy tất cả node từ HashMap khác
   void copyFrom(const HashMap &other) {
     for (size_t i = 0; i < other.bucketCount; ++i) {
       HashNode *curr = other.table[i];

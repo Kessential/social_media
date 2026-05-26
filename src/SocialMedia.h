@@ -23,9 +23,9 @@ struct GraphStats {
   int totalUsers = 0;
   int totalEdges = 0;
   int maxDegree = 0;
-  int maxDegreeUser = -1;
+  Vector<int> maxDegreeUsers; // Tất cả người có bậc cao nhất
   int minDegree = 0;
-  int minDegreeUser = -1;
+  Vector<int> minDegreeUsers; // Tất cả người có bậc thấp nhất
   int isolatedCount = 0;
   double avgDegree = 0.0;
 };

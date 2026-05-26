@@ -21,6 +21,25 @@ public:
   Queue(const Queue &other) = delete;
   Queue &operator=(const Queue &other) = delete;
 
+  Queue(Queue &&other) noexcept
+      : head(other.head), tail(other.tail), count(other.count) {
+    other.head = nullptr;
+    other.tail = nullptr;
+    other.count = 0;
+  }
+  Queue &operator=(Queue &&other) noexcept {
+    if (this != &other) {
+      clear();
+      head = other.head;
+      tail = other.tail;
+      count = other.count;
+      other.head = nullptr;
+      other.tail = nullptr;
+      other.count = 0;
+    }
+    return *this;
+  }
+
   void push(const T &value) {
     Node *newNode = new Node(value);
     if (empty()) {

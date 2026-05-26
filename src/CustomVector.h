@@ -82,6 +82,13 @@ public:
     ++len;
   }
 
+  void push_back(T &&value) {
+    if (len == cap)
+      grow(cap == 0 ? 1 : cap * 2);
+    data[len] = std::move(value);
+    ++len;
+  }
+
   void pop_back() {
     if (len > 0)
       --len;

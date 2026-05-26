@@ -311,9 +311,10 @@ def generate_testcases():
         expected=(
             "TC10: Nhanh sao khong lo (1 trung tam + 999 nhanh)\n"
             "Nguoi dung 1 co 999 ban truc tiep -> suggestFriends(1) = []\n"
-            "Nguoi dung 2 -> suggestFriends(2) tra ve toi da 998 goi y\n"
-            "  (tat ca cac nhanh khac qua trung tam), moi nhanh co mutualCount=1\n"
-            "  Rieng nguoi dung 3 co mutualCount=2 (qua trung tam va canh truc tiep 2-3)\n"
+            "Nguoi dung 2 co ban truc tiep: {1 (hub), 3 (canh 2-3)}\n"
+            "suggestFriends(2) tra ve 997 goi y (nhanh 4-1000 qua hub)\n"
+            "  - User 3 KHONG nam trong goi y vi 3 da la ban truc tiep cua 2\n"
+            "  - Moi nhanh (4-1000) co mutualCount=1 (qua hub)\n"
             "Kiem tra hieu suat voi node bac cao.\n"
         ))
 
@@ -465,19 +466,25 @@ def generate_testcases():
 
     # ── TC22: CSV va edges co dong trong xen ke ──────────────────────────────
     # Dong trong phai duoc bo qua an toan.
-    write_testcase("tc22_blank_lines_whitespace",
-        users={1: "Alice", 3: "Charlie"},
-        edges=[(1,3)],
-        expected=(
+    # Ghi file thu cong de chen dong trong xen ke (write_testcase khong lam duoc).
+    tc22_dir = os.path.join(OUTPUT_DIR, "testcases", "tc22_blank_lines_whitespace")
+    os.makedirs(tc22_dir, exist_ok=True)
+    with open(os.path.join(tc22_dir, "users.csv"), "w", encoding="utf-8") as f:
+        f.write("1,Alice\n\n3,Charlie\n")
+    with open(os.path.join(tc22_dir, "edges.txt"), "w", encoding="utf-8") as f:
+        f.write("\n1 3\n\n")
+    with open(os.path.join(tc22_dir, "expected.txt"), "w", encoding="utf-8") as f:
+        f.write(
             "TC22: CSV co dong trong va khoang trang\n"
-            "File users.csv co dong trong xen ke.\n"
-            "File edges.txt co dong trong xen ke.\n"
+            "File users.csv co dong trong xen ke giua user 1 va user 3.\n"
+            "File edges.txt co dong trong o dau va cuoi file.\n"
             "Ket qua mong doi:\n"
             "  - Dong trong duoc bo qua (skip), khong crash\n"
             "  - getUserCount() = 2 (chi co user 1 va 3)\n"
             "  - getEdgeCount() = 1 (canh 1-3)\n"
             "  - Khong xuat loi cho dong trong\n"
-        ))
+        )
+    print(f"  [OK] {'tc22_blank_lines_whitespace':40s} |     2 nguoi dung |     1 ket noi")
 
     # ── TC23: User ID cuc han (0, am, INT_MAX) ──────────────────────────────
     # Kiem tra HashMap hash voi cac gia tri bien.
@@ -510,7 +517,9 @@ def generate_testcases():
         expected=(
             "TC24: suggestFriends voi maxSuggestions = 0\n"
             "suggestFriends(1, 0) -> [] (Vector rong, khong crash)\n"
-            "Mong doi: tra ve Vector rong vi maxSuggestions <= 0 duoc xu ly dac biet.\n"
+            "Ly do: dieu kien 'maxSuggestions <= 0' trong suggestFriends()\n"
+            "  tra ve Vector rong ngay lap tuc (early return).\n"
+            "printSuggestions(1, 0) -> xuat '[LOI] So nhap vao khong hop le!'\n"
         ))
 
     # ── TC25: Do thi vong tron thuan tuy (cycle) ─────────────────────────────
@@ -648,8 +657,150 @@ def generate_testcases():
             "Kiem tra: adjList doi xung sau moi thao tac xoa.\n"
         ))
 
+    # ── TC32: Tim kiem nguoi dung theo ten (searchUserByName) ──────────────────
+    # Kiem tra search case-insensitive va tim substring.
+    write_testcase("tc32_search_by_name",
+        users={1: "Nguyen Van An", 2: "Tran Thi Binh", 3: "Le Van An Khang",
+               4: "Pham Minh", 5: "nguyen thi an"},
+        edges=[(1,2),(2,3),(3,4),(4,5)],
+        expected=(
+            "TC32: Tim kiem nguoi dung theo ten (searchUserByName)\n"
+            "searchUserByName(\"an\") -> tim tat ca user co ten chua 'an' (case-insensitive):\n"
+            "  - User 1: 'Nguyen Van An' (chua 'An')\n"
+            "  - User 3: 'Le Van An Khang' (chua 'An')\n"
+            "  - User 5: 'nguyen thi an' (chua 'an')\n"
+            "  - User 4: 'Pham Minh' -> KHONG match (khong chua 'an')\n"
+            "searchUserByName(\"BINH\") -> tim thay user 2 ('Tran Thi Binh')\n"
+            "searchUserByName(\"xyz\") -> [] (khong tim thay)\n"
+            "searchUserByName(\"\") -> tat ca user (empty string la substring cua moi string)\n"
+            "Kiem tra: case-insensitive dung, substring match dung.\n"
+        ))
+
+    # ── TC33: Export functions ────────────────────────────────────────────────
+    # Kiem tra exportSuggestions, exportGraphStats, exportUserConnections
+    write_testcase("tc33_export_functions",
+        users={1: "An", 2: "Binh", 3: "Chi", 4: "Dung"},
+        edges=[(1,2),(2,3),(3,4),(1,3)],
+        expected=(
+            "TC33: Kiem tra cac ham export ra file\n"
+            "Thao tac:\n"
+            "  1. exportSuggestions(1, 5, 'test_suggest.txt') -> tra ve true, file duoc tao\n"
+            "  2. exportGraphStats('test_stats.txt') -> tra ve true, file duoc tao\n"
+            "  3. exportUserConnections(1, 'test_user.txt') -> tra ve true, file duoc tao\n"
+            "  4. exportSuggestions(9999, 5, 'test_fail.txt') -> tra ve false (user khong ton tai)\n"
+            "  5. exportUserConnections(9999, 'test_fail2.txt') -> tra ve false\n"
+            "Kiem tra: File tao thanh cong, noi dung chinh xac, ham tra ve false khi user khong ton tai.\n"
+        ))
+
+    # ── TC34: Them user sau khi load file ─────────────────────────────────────
+    # Load tu file, sau do them user va connection bang tay.
+    write_testcase("tc34_add_after_load",
+        users={1: "An", 2: "Binh", 3: "Chi"},
+        edges=[(1,2),(2,3)],
+        expected=(
+            "TC34: Them user va connection sau khi load file\n"
+            "Sau khi load: getUserCount() = 3, getEdgeCount() = 2\n"
+            "Thao tac:\n"
+            "  1. addUser(4, 'Dung') -> them thanh cong\n"
+            "  2. addConnection(3, 4) -> them thanh cong\n"
+            "  3. addConnection(1, 4) -> them thanh cong\n"
+            "Ket qua mong doi:\n"
+            "  - getUserCount() = 4\n"
+            "  - getEdgeCount() = 4\n"
+            "  - suggestFriends(2) -> [{4, mutualCount=2}] (qua 1 VA 3)\n"
+            "  - suggestFriends(4) -> [{2, mutualCount=2}] (qua 1 VA 3)\n"
+            "Kiem tra: Them user/connection sau load van hoat dong binh thuong.\n"
+        ))
+
+    # ── TC35: Do thi hai phan (bipartite graph) ──────────────────────────────
+    # Nhom A = {1,2,3}, Nhom B = {4,5,6}. Moi node nhom A ket noi tat ca node nhom B.
+    bp_users = {1: "A1", 2: "A2", 3: "A3", 4: "B1", 5: "B2", 6: "B3"}
+    bp_edges = []
+    for a in [1, 2, 3]:
+        for b in [4, 5, 6]:
+            bp_edges.append((a, b))
+    write_testcase("tc35_bipartite_graph",
+        users=bp_users,
+        edges=bp_edges,
+        expected=(
+            "TC35: Do thi hai phan (bipartite graph)\n"
+            "Nhom A = {1,2,3}, Nhom B = {4,5,6}\n"
+            "Moi node nhom A ket noi tat ca node nhom B (9 canh).\n"
+            "suggestFriends(1) -> [{2, mutualCount=3}, {3, mutualCount=3}]\n"
+            "  (2 va 3 deu co 3 ban chung voi 1: qua 4, 5, 6)\n"
+            "suggestFriends(4) -> [{5, mutualCount=3}, {6, mutualCount=3}]\n"
+            "  (5 va 6 deu co 3 ban chung voi 4: qua 1, 2, 3)\n"
+            "Khong co goi y cheo nhom (da la ban truc tiep).\n"
+        ))
+
+    # ── TC36: Stress memory — load, xoa het, load lai ────────────────────────
+    # Kiem tra memory management khi clear roi reload.
+    sm_users = {}
+    sm_edges = []
+    for i in range(1, 51):
+        sm_users[i] = f"User_{i}"
+    for i in range(1, 50):
+        sm_edges.append((i, i + 1))
+    write_testcase("tc36_stress_memory",
+        users=sm_users,
+        edges=sm_edges,
+        expected=(
+            "TC36: Stress memory — load, xoa het, load lai\n"
+            "Buoc 1: Load 50 users va 49 connections.\n"
+            "Buoc 2: removeUser(1) den removeUser(50) — xoa tung user.\n"
+            "Buoc 3: Kiem tra getUserCount() = 0, getEdgeCount() = 0.\n"
+            "Buoc 4: Load lai cung file data.\n"
+            "Buoc 5: Kiem tra getUserCount() = 50, getEdgeCount() = 49.\n"
+            "Kiem tra: Khong memory leak, khong crash, data duoc tai lai dung.\n"
+        ))
+
+    # ── TC37: measurePerformance ──────────────────────────────────────────────
+    # Kiem tra ham do hieu suat khong crash.
+    write_testcase("tc37_measure_performance",
+        users={1: "An", 2: "Binh", 3: "Chi", 4: "Dung"},
+        edges=[(1,2),(2,3),(3,4),(1,3)],
+        expected=(
+            "TC37: Kiem tra measurePerformance\n"
+            "Thao tac:\n"
+            "  1. measurePerformance(1) -> in thoi gian BFS, goi y, export (khong crash)\n"
+            "  2. measurePerformance(9999) -> xuat '[LOI] Nguoi dung 9999 khong ton tai!'\n"
+            "Kiem tra: Ham chay binh thuong, khong crash, xuat ket qua hop ly.\n"
+        ))
+
+    # ── TC38: removeUser user khong ton tai ───────────────────────────────────
+    # Goi removeUser voi ID khong co trong he thong.
+    write_testcase("tc38_remove_nonexistent_user",
+        users={1: "An", 2: "Binh"},
+        edges=[(1,2)],
+        expected=(
+            "TC38: removeUser voi user khong ton tai\n"
+            "removeUser(9999) -> xuat '[LOI] Nguoi dung 9999 khong ton tai!'\n"
+            "removeUser(0) -> xuat loi tuong tu\n"
+            "Ket qua mong doi:\n"
+            "  - getUserCount() = 2 (khong thay doi)\n"
+            "  - getEdgeCount() = 1 (khong thay doi)\n"
+            "  - Khong crash, chi xuat thong bao loi\n"
+        ))
+
+    # ── TC39: removeConnection ket noi khong ton tai ──────────────────────────
+    # Goi removeConnection voi canh khong co hoac user khong co.
+    write_testcase("tc39_remove_nonexistent_connection",
+        users={1: "An", 2: "Binh", 3: "Chi"},
+        edges=[(1,2)],
+        expected=(
+            "TC39: removeConnection voi ket noi khong ton tai\n"
+            "removeConnection(1, 3) -> xuat '[LOI] Ket noi 1 <-> 3 khong ton tai!'\n"
+            "  (user 1 va 3 ton tai nhung khong co canh)\n"
+            "removeConnection(1, 9999) -> xuat '[LOI] Nguoi dung khong ton tai!'\n"
+            "  (user 9999 khong ton tai)\n"
+            "removeConnection(9999, 8888) -> xuat '[LOI] Nguoi dung khong ton tai!'\n"
+            "Ket qua mong doi:\n"
+            "  - getEdgeCount() = 1 (chi co canh 1-2, khong thay doi)\n"
+            "  - Khong crash, chi xuat thong bao loi\n"
+        ))
+
     print("=" * 60)
-    print(f"  All test cases written to: {os.path.join(OUTPUT_DIR, 'testcases')}")
+    print(f"  Tat ca test case duoc ghi vao: {os.path.join(OUTPUT_DIR, 'testcases')}")
     print("=" * 60)
 
 
