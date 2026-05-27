@@ -22,10 +22,10 @@ int readInt(const std::string &prompt) {
       return val;
     }
     if (std::cin.eof()) {
-      std::cerr << "\n[LOI] Het du lieu dau vao!\n";
+      std::cerr << "\n[LOI] Da het du lieu dau vao. Chuong trinh se thoat.\n";
       exit(0);
     }
-    std::cout << "[LOI] Vui long nhap so nguyen!\n";
+    std::cout << "[LOI] Gia tri khong hop le. Vui long nhap mot so nguyen.\n";
     clearInput();
   }
 }
@@ -41,7 +41,7 @@ std::string readLine(const std::string &prompt) {
 void printMenu() {
   std::cout << "\n";
   std::cout << "╔═════════════════════════════════════════════════╗\n";
-  std::cout << "║          MANG XA HOI - MO PHONG BFS             ║\n";
+  std::cout << "║      MANG XA HOI - MO PHONG THUAT TOAN BFS      ║\n";
   std::cout << "╠═════════════════════════════════════════════════╣\n";
   std::cout << "║  1.  Tai du lieu tu file                        ║\n";
   std::cout << "║  2.  Them nguoi dung                            ║\n";
@@ -68,9 +68,9 @@ int main() {
   SocialMedia network;
   bool running = true;
 
-  std::cout << "Chao mung den voi ung dung Mo phong Mang Xa Hoi!\n";
-  std::cout << "Su dung BFS de tim \"nguoi quen cua nguoi quen\" va goi y ket "
-               "ban.\n";
+  std::cout << "Chao mung ban den voi chuong trinh Mo phong Mang Xa Hoi!\n";
+  std::cout << "He thong su dung thuat toan BFS de tim ban cua ban va goi y "
+               "ket ban.\n";
 
   while (running) {
     printMenu();
@@ -79,7 +79,7 @@ int main() {
 
     switch (choice) {
     case 0: {
-      std::cout << "Tam biet!\n";
+      std::cout << "Cam on ban da su dung chuong trinh. Tam biet!\n";
       running = false;
       break;
     }
@@ -92,10 +92,11 @@ int main() {
       bool ok1 = network.loadUsersFromFile(userFile);
       bool ok2 = network.loadConnectionsFromFile(edgeFile);
       if (ok1 && ok2) {
-        std::cout << "[OK] Tai du lieu thanh cong! " << network.getUserCount()
+        std::cout << "[OK] Tai du lieu thanh cong: " << network.getUserCount()
                   << " nguoi dung, " << network.getEdgeCount() << " ket noi.\n";
       } else {
-        std::cerr << "[LOI] Khong the tai du lieu!\n";
+        std::cerr << "[LOI] Tai du lieu that bai. Vui long kiem tra lai duong "
+                     "dan file.\n";
       }
       break;
     }
@@ -105,8 +106,9 @@ int main() {
       clearInput();
       std::string name = readLine("Nhap ten: ");
       if (network.addUser(id, name)) {
-        std::cout << "[OK] Da them nguoi dung " << name << " (ID: " << id
-                  << ").\n";
+        std::cout << "[OK] Da them thanh cong nguoi dung \"" << name
+                  << "\" voi ID " << id << ".\n";
+        ;
       }
       break;
     }
@@ -114,7 +116,10 @@ int main() {
     case 3: {
       int id1 = readInt("Nhap User ID 1: ");
       int id2 = readInt("Nhap User ID 2: ");
-      network.addConnection(id1, id2);
+      if (network.addConnection(id1, id2)) {
+        std::cout << "[OK] Da ket noi thanh cong: User ID " << id1
+                  << " <-> User ID " << id2 << ".\n";
+      }
       break;
     }
 
@@ -146,10 +151,12 @@ int main() {
       std::string keyword = readLine("Nhap tu khoa tim kiem: ");
       Vector<int> results = network.searchUserByName(keyword);
       if (results.empty()) {
-        std::cout << "\n[Thong bao] Khong tim thay nguoi dung nao phu hop!\n";
+        std::cout << "\n[Thong bao] Khong tim thay nguoi dung nao phu hop voi "
+                     "tu khoa \""
+                  << keyword << "\".\n";
       } else {
         std::cout << "\n[OK] Tim thay " << results.size()
-                  << " nguoi dung phu hop:\n";
+                  << " nguoi dung phu hop voi tu khoa \"" << keyword << "\":\n";
         for (size_t i = 0; i < results.size(); ++i) {
           network.printUserInfo(results[i]);
         }
@@ -160,12 +167,13 @@ int main() {
     case 9: {
       int id = readInt("Nhap User ID: ");
       if (!network.userExists(id)) {
-        std::cerr << "[LOI] Nguoi dung khong ton tai!\n";
+        std::cerr << "[LOI] Nguoi dung voi ID " << id << " khong ton tai!\n";
         break;
       }
       HashSet<int> friends = network.getDirectConnections(id);
-      std::cout << "\nBan be truc tiep cua " << network.getUserName(id)
-                << " (ID: " << id << "): " << friends.size() << " nguoi\n";
+      std::cout << "\nDanh sach ban be truc tiep cua "
+                << network.getUserName(id) << " (ID: " << id
+                << "): " << friends.size() << " nguoi\n";
       friends.forEach([&](int fid) {
         std::cout << "  " << fid << " - " << network.getUserName(fid) << "\n";
       });
@@ -175,7 +183,7 @@ int main() {
     case 10: {
       int id = readInt("Nhap User ID: ");
       if (!network.userExists(id)) {
-        std::cerr << "[LOI] Nguoi dung khong ton tai!\n";
+        std::cerr << "[LOI] Nguoi dung voi ID " << id << " khong ton tai!\n";
         break;
       }
       HashSet<int> fof = network.getFriendsOfFriends(id);
@@ -184,7 +192,7 @@ int main() {
 
       size_t totalFoF = fofVector.size();
       if (totalFoF == 0) {
-        std::cout << "\n[Thong bao] Nguoi dung nay khong co \"ban cua ban\"!\n";
+        std::cout << "\n[Thong bao] Nguoi dung nay chua co \"ban cua ban\" trong mang.\n";
         break;
       }
 
@@ -228,13 +236,15 @@ int main() {
           if (currentPage + 1 < totalPages) {
             currentPage++;
           } else {
-            std::cout << "[Thong bao] Da o trang cuoi cung!\n";
+            std::cout << "[Thong bao] Day la trang cuoi. Nhan [p] de quay lai "
+                         "hoac [Enter] de thoat.\n";
           }
         } else if (choice == "p" || choice == "P") {
           if (currentPage > 0) {
             currentPage--;
           } else {
-            std::cout << "[Thong bao] Da o trang dau tien!\n";
+            std::cout << "[Thong bao] Day la trang dau. Nhan [n] de xem trang "
+                         "tiep theo.\n";
           }
         } else {
           break;
@@ -305,7 +315,7 @@ int main() {
         break;
       }
       default:
-        std::cout << "[LOI] Lua chon khong hop le!\n";
+        std::cout << "[LOI] Lua chon khong hop le. Vui long nhap lai (0-3).\n";
         break;
       }
       break;
@@ -318,7 +328,7 @@ int main() {
     }
 
     default:
-      std::cout << "[LOI] Lua chon khong hop le!\n";
+      std::cout << "[LOI] Lua chon khong hop le. Vui long nhap lai (0-14).\n";
       break;
     }
   }

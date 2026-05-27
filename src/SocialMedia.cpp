@@ -11,31 +11,34 @@
 
 bool SocialMedia::addUser(int userID, const std::string &name) {
   if (users.contains(userID)) {
-    std::cerr << "[CANH BAO] User ID " << userID << " da ton tai, bo qua!\n";
+    std::cerr << "[CANH BAO] User ID " << userID
+              << " da ton tai trong he thong, bo qua!\n";
     return false;
   }
   users.put(userID, name);
   return true;
 }
 
-void SocialMedia::addConnection(int userID_1, int userID_2) {
+bool SocialMedia::addConnection(int userID_1, int userID_2) {
   if (userID_1 == userID_2) {
-    std::cerr << "[CANH BAO] Tu ket noi toi chinh minh: " << userID_1 << "\n";
-    return;
+    std::cerr << "[CANH BAO] Khong the tu ket noi toi chinh minh (User ID: "
+              << userID_1 << ")\n";
+    return false;
   }
   if (!users.contains(userID_1) || !users.contains(userID_2)) {
-    std::cerr << "[CANH BAO] Ket noi toi nguoi dung khong ton tai: " << userID_1
-              << " <-> " << userID_2 << "\n";
-    return;
+    std::cerr << "[CANH BAO] Mot trong hai User ID khong ton tai: " << userID_1
+              << " <-> " << userID_2 << ". Bo qua ket noi nay.\n";
+    return false;
   }
   // Kiểm tra kết nối đã tồn tại chưa
   if (adjList.contains(userID_1) && adjList.get(userID_1).contains(userID_2)) {
-    std::cerr << "[CANH BAO] Ket noi " << userID_1 << " <-> " << userID_2
-              << " da ton tai, bo qua!\n";
-    return;
+    std::cerr << "[CANH BAO] Ket noi giua User ID " << userID_1
+              << " va User ID " << userID_2 << " da ton tai. Bo qua.\n";
+    return false;
   }
   adjList[userID_1].insert(userID_2);
   adjList[userID_2].insert(userID_1);
+  return true;
 }
 
 void SocialMedia::removeUser(int userID) {
@@ -56,27 +59,28 @@ void SocialMedia::removeUser(int userID) {
   }
 
   users.remove(userID);
-  std::cout << "[OK] Da xoa nguoi dung " << userID << ".\n";
+  std::cout << "[OK] Da xoa nguoi dung co ID " << userID << " khoi he thong.\n";
 }
 
 void SocialMedia::removeConnection(int userID_1, int userID_2) {
   if (!users.contains(userID_1) || !users.contains(userID_2)) {
-    std::cerr << "[LOI] Nguoi dung khong ton tai!\n";
+    std::cerr << "[LOI] Mot trong hai User ID khong ton tai. Khong the xoa ket "
+                 "noi.\n";
     return;
   }
   // Kiểm tra kết nối có tồn tại không
-  bool exists = adjList.contains(userID_1) &&
-                adjList.get(userID_1).contains(userID_2);
+  bool exists =
+      adjList.contains(userID_1) && adjList.get(userID_1).contains(userID_2);
   if (!exists) {
-    std::cerr << "[LOI] Ket noi " << userID_1 << " <-> " << userID_2
-              << " khong ton tai!\n";
+    std::cerr << "[LOI] Ket noi giua User ID " << userID_1 << " va User ID "
+              << userID_2 << " khong ton tai.\n";
     return;
   }
   adjList.get(userID_1).remove(userID_2);
   if (adjList.contains(userID_2))
     adjList.get(userID_2).remove(userID_1);
-  std::cout << "[OK] Da xoa ket noi " << userID_1 << " <-> " << userID_2
-            << ".\n";
+  std::cout << "[OK] Da xoa ket noi giua User ID " << userID_1 << " va User ID "
+            << userID_2 << ".\n";
 }
 
 // ============================================================================
@@ -86,7 +90,8 @@ void SocialMedia::removeConnection(int userID_1, int userID_2) {
 bool SocialMedia::loadUsersFromFile(const std::string &filepath) {
   std::ifstream file(filepath);
   if (!file.is_open()) {
-    std::cerr << "[LOI] Khong the mo duoc file: " << filepath << "\n";
+    std::cerr << "[LOI] Khong the mo file \"" << filepath
+              << "\". Vui long kiem tra duong dan.\n";
     return false;
   }
   std::string line;
@@ -100,8 +105,8 @@ bool SocialMedia::loadUsersFromFile(const std::string &filepath) {
         int id = std::stoi(strUserID);
         addUser(id, name);
       } catch (const std::exception &e) {
-        std::cerr << "[CANH BAO] Dong khong hop le, bo qua: \"" << line
-                  << "\"\n";
+        std::cerr << "[CANH BAO] Dinh dang dong khong hop le, bo qua: \""
+                  << line << "\"\n";
       }
     }
   }
@@ -111,7 +116,8 @@ bool SocialMedia::loadUsersFromFile(const std::string &filepath) {
 bool SocialMedia::loadConnectionsFromFile(const std::string &filepath) {
   std::ifstream file(filepath);
   if (!file.is_open()) {
-    std::cerr << "[LOI] Khong the mo duoc file: " << filepath << "\n";
+    std::cerr << "[LOI] Khong the mo file \"" << filepath
+              << "\". Vui long kiem tra duong dan.\n";
     return false;
   }
   std::string line;
@@ -123,7 +129,8 @@ bool SocialMedia::loadConnectionsFromFile(const std::string &filepath) {
     if (ss >> userID_1 >> userID_2) {
       addConnection(userID_1, userID_2);
     } else {
-      std::cerr << "[CANH BAO] Dong khong hop le, bo qua: \"" << line << "\"\n";
+      std::cerr << "[CANH BAO] Dinh dang dong khong hop le, bo qua: \"" << line
+                << "\"\n";
     }
   }
   return true;
@@ -155,7 +162,7 @@ void SocialMedia::listUsers() const {
 
   size_t totalUsers = userList.size();
   if (totalUsers == 0) {
-    std::cout << "\n[Thong bao] Khong co nguoi dung nao trong mang xa hoi!\n";
+    std::cout << "\n[Thong bao] Chua co nguoi dung nao trong he thong.\n";
     return;
   }
 
@@ -198,13 +205,13 @@ void SocialMedia::listUsers() const {
       if (currentPage + 1 < totalPages) {
         currentPage++;
       } else {
-        std::cout << "[Thong bao] Da o trang cuoi cung!\n";
+        std::cout << "[Thong bao] Day la trang cuoi. Nhan [p] de quay lai hoac [Enter] de thoat.\n";
       }
     } else if (choice == "p" || choice == "P") {
       if (currentPage > 0) {
         currentPage--;
       } else {
-        std::cout << "[Thong bao] Da o trang dau tien!\n";
+        std::cout << "[Thong bao] Day la trang dau. Nhan [n] de xem trang tiep theo.\n";
       }
     } else {
       break;
@@ -260,13 +267,15 @@ Vector<int> SocialMedia::searchUserByName(const std::string &keyword) const {
   Vector<int> results;
   std::string lowerKeyword = keyword;
   for (size_t i = 0; i < keyword.size(); ++i) {
-    lowerKeyword[i] = static_cast<char>(tolower(static_cast<unsigned char>(lowerKeyword[i])));
+    lowerKeyword[i] =
+        static_cast<char>(tolower(static_cast<unsigned char>(lowerKeyword[i])));
   }
 
   users.forEach([&](const int &userID, const std::string &name) {
     std::string lowerName = name;
     for (size_t i = 0; i < name.size(); ++i) {
-      lowerName[i] = static_cast<char>(tolower(static_cast<unsigned char>(lowerName[i])));
+      lowerName[i] =
+          static_cast<char>(tolower(static_cast<unsigned char>(lowerName[i])));
     }
     // Tìm substring
     if (lowerName.find(lowerKeyword) != std::string::npos) {
@@ -351,9 +360,9 @@ Vector<FriendSuggestion> SocialMedia::suggestFriends(int userID,
   // Sắp xếp giảm dần theo số bạn chung
   Sort::sort(results, [](const FriendSuggestion &a, const FriendSuggestion &b) {
     if (a.mutualConnectionsCount != b.mutualConnectionsCount)
-        return a.mutualConnectionsCount > b.mutualConnectionsCount;
+      return a.mutualConnectionsCount > b.mutualConnectionsCount;
     return a.suggestedUserID < b.suggestedUserID; // tie-breaker
-});
+  });
 
   if (static_cast<int>(results.size()) > maxSuggestions) {
     results.resize(static_cast<size_t>(maxSuggestions));
@@ -363,7 +372,7 @@ Vector<FriendSuggestion> SocialMedia::suggestFriends(int userID,
 
 void SocialMedia::printSuggestions(int userID, int maxSuggestions) const {
   if (maxSuggestions <= 0) {
-    std::cerr << "[LOI] So nhap vao khong hop le!\n";
+    std::cerr << "[LOI] So luong goi y phai lon hon 0.\n";
     return;
   }
 
@@ -375,7 +384,8 @@ void SocialMedia::printSuggestions(int userID, int maxSuggestions) const {
   Vector<FriendSuggestion> suggestions = suggestFriends(userID, maxSuggestions);
 
   if (suggestions.empty()) {
-    std::cout << "\n[Thong bao] Khong co goi y ket ban nao phu hop!\n";
+    std::cout << "\n[Thong bao] Khong tim thay goi y ket ban nao cho nguoi "
+                 "dung nay.\n";
     return;
   }
 
@@ -441,13 +451,13 @@ void SocialMedia::printSuggestions(int userID, int maxSuggestions) const {
       if (currentPage + 1 < totalPages) {
         currentPage++;
       } else {
-        std::cout << "[Thong bao] Da o trang cuoi cung!\n";
+        std::cout << "[Thong bao] Day la trang cuoi. Nhan [p] de quay lai hoac [Enter] de thoat.\n";
       }
     } else if (choice == "p" || choice == "P") {
       if (currentPage > 0) {
         currentPage--;
       } else {
-        std::cout << "[Thong bao] Da o trang dau tien!\n";
+        std::cout << "[Thong bao] Day la trang dau. Nhan [n] de xem trang tiep theo.\n";
       }
     } else {
       break;
@@ -509,8 +519,8 @@ void SocialMedia::printGraphStats() const {
 
   // --- Nhieu ban nhat ---
   if (!s.maxDegreeUsers.empty()) {
-    std::cout << "Nhieu ban nhat (" << s.maxDegree << " ban): "
-              << s.maxDegreeUsers.size() << " nguoi\n";
+    std::cout << "Nhieu ban nhat (" << s.maxDegree
+              << " ban): " << s.maxDegreeUsers.size() << " nguoi\n";
     for (size_t i = 0; i < s.maxDegreeUsers.size(); ++i) {
       int uid = s.maxDegreeUsers[i];
       if (users.contains(uid))
@@ -520,8 +530,8 @@ void SocialMedia::printGraphStats() const {
 
   // --- It ban nhat ---
   if (!s.minDegreeUsers.empty()) {
-    std::cout << "It ban nhat    (" << s.minDegree << " ban): "
-              << s.minDegreeUsers.size() << " nguoi\n";
+    std::cout << "It ban nhat    (" << s.minDegree
+              << " ban): " << s.minDegreeUsers.size() << " nguoi\n";
     for (size_t i = 0; i < s.minDegreeUsers.size(); ++i) {
       int uid = s.minDegreeUsers[i];
       if (users.contains(uid))
@@ -546,7 +556,7 @@ bool SocialMedia::exportSuggestions(int userID, int maxSuggestions,
 
   std::ofstream file(filepath);
   if (!file.is_open()) {
-    std::cerr << "[LOI] Khong the tao file: " << filepath << "\n";
+    std::cerr << "[LOI] Khong the tao file \"" << filepath << "\". Vui long kiem tra quyen ghi.\n";
     return false;
   }
 
@@ -586,7 +596,7 @@ bool SocialMedia::exportSuggestions(int userID, int maxSuggestions,
 bool SocialMedia::exportGraphStats(const std::string &filepath) const {
   std::ofstream file(filepath);
   if (!file.is_open()) {
-    std::cerr << "[LOI] Khong the tao file: " << filepath << "\n";
+    std::cerr << "[LOI] Khong the tao file \"" << filepath << "\". Vui long kiem tra quyen ghi.\n";
     return false;
   }
 
@@ -601,8 +611,8 @@ bool SocialMedia::exportGraphStats(const std::string &filepath) const {
 
   // --- Nhieu ban nhat ---
   if (!s.maxDegreeUsers.empty()) {
-    file << "Nhieu ban nhat (" << s.maxDegree << " ban): "
-         << s.maxDegreeUsers.size() << " nguoi\n";
+    file << "Nhieu ban nhat (" << s.maxDegree
+         << " ban): " << s.maxDegreeUsers.size() << " nguoi\n";
     for (size_t i = 0; i < s.maxDegreeUsers.size(); ++i) {
       int uid = s.maxDegreeUsers[i];
       if (users.contains(uid))
@@ -612,8 +622,8 @@ bool SocialMedia::exportGraphStats(const std::string &filepath) const {
 
   // --- It ban nhat ---
   if (!s.minDegreeUsers.empty()) {
-    file << "It ban nhat    (" << s.minDegree << " ban): "
-         << s.minDegreeUsers.size() << " nguoi\n";
+    file << "It ban nhat    (" << s.minDegree
+         << " ban): " << s.minDegreeUsers.size() << " nguoi\n";
     for (size_t i = 0; i < s.minDegreeUsers.size(); ++i) {
       int uid = s.minDegreeUsers[i];
       if (users.contains(uid))
@@ -646,7 +656,7 @@ bool SocialMedia::exportUserConnections(int userID,
 
   std::ofstream file(filepath);
   if (!file.is_open()) {
-    std::cerr << "[LOI] Khong the tao file: " << filepath << "\n";
+    std::cerr << "[LOI] Khong the tao file \"" << filepath << "\". Vui long kiem tra quyen ghi.\n";
     return false;
   }
 

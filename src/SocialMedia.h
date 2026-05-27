@@ -38,7 +38,7 @@ private:
 public:
   // === Quản lý người dùng & kết nối ===
   bool addUser(int userID, const std::string &name);
-  void addConnection(int userID_1, int userID_2);
+  bool addConnection(int userID_1, int userID_2);
   void removeUser(int userID);
   void removeConnection(int userID_1, int userID_2);
 

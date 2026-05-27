@@ -259,7 +259,7 @@ Script cũng sinh **31 test cases** vào `scripts/testcases/<tên>/`, mỗi thư
 
 ```
 ╔═════════════════════════════════════════════════╗
-║          MANG XA HOI - MO PHONG BFS             ║
+║      MANG XA HOI - MO PHONG THUAT TOAN BFS      ║
 ╠═════════════════════════════════════════════════╣
 ║  1.  Tai du lieu tu file                        ║
 ║  2.  Them nguoi dung                            ║
@@ -281,20 +281,62 @@ Script cũng sinh **31 test cases** vào `scripts/testcases/<tên>/`, mỗi thư
 
 **Tải dữ liệu và đo hiệu suất:**
 ```
+Chao mung ban den voi chuong trinh Mo phong Mang Xa Hoi!
+He thong su dung thuat toan BFS de tim ban cua ban va goi y ket ban.
+
 Lua chon cua ban: 1
 Nhap duong dan file users (vd: users.csv): scripts/users.csv
 Nhap duong dan file edges (vd: edges.txt): scripts/edges.txt
-[OK] Tai du lieu thanh cong! 10500 nguoi dung, 103247 ket noi.
+[OK] Tai du lieu thanh cong: 10500 nguoi dung, 103247 ket noi.
 
 Lua chon cua ban: 14
 Nhap User ID de do hieu suat: 1
-=== DO HIEU SUAT (User ID: 1) ===
+=== DO HIEU SUAT — User ID: 1 ===
 --------------------------------------------------
-BFS (ban cua ban):            312 us | Tim thay: 847 nguoi
-Goi y ket ban (top 10):       198 us | Ket qua: 10 goi y
+BFS (ban cua ban):            312 us  | Ket qua: 847 nguoi
+Goi y ket ban (top 10):       198 us  | Ket qua: 10 goi y
 Export goi y (top 10):         45 us
 --------------------------------------------------
 Tong so nguoi dung: 10500 | Tong so ket noi: 103247
+```
+
+**Thêm người dùng và kết nối:**
+```
+Lua chon cua ban: 2
+Nhap User ID: 9999
+Nhap ten: Nguyen Thi Lan
+[OK] Da them thanh cong nguoi dung "Nguyen Thi Lan" voi ID 9999.
+
+Lua chon cua ban: 3
+Nhap User ID 1: 9999
+Nhap User ID 2: 1
+[OK] Da ket noi thanh cong: User ID 9999 <-> User ID 1.
+```
+
+**Tìm kiếm người dùng:**
+```
+Lua chon cua ban: 8
+Nhap tu khoa tim kiem: nguyen
+[OK] Tim thay 312 nguoi dung phu hop voi tu khoa "nguyen":
+...
+```
+
+**Phân trang (điều hướng):**
+```
+Phim tat: [n] Trang sau | [p] Trang truoc | [Enter] Ve menu chinh
+Lua chon cua ban: n
+[Thong bao] Day la trang cuoi. Nhan [p] de quay lai hoac [Enter] de thoat.
+```
+
+**Các thông báo lỗi / cảnh báo điển hình:**
+```
+[LOI] Nguoi dung voi ID 999 khong ton tai!
+[LOI] Mot trong hai User ID khong ton tai. Khong the xoa ket noi.
+[LOI] Gia tri khong hop le. Vui long nhap mot so nguyen.
+[LOI] Khong the mo file "data/missing.csv". Vui long kiem tra duong dan.
+[LOI] Khong the tao file "output/report.txt". Vui long kiem tra quyen ghi.
+[CANH BAO] Ket noi giua User ID 1 va User ID 2 da ton tai. Bo qua.
+[CANH BAO] Khong the tu ket noi toi chinh minh (User ID: 5).
 ```
 
 **Thống kê đồ thị (hỗ trợ nhiều user cùng bậc):**
