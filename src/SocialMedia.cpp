@@ -205,13 +205,15 @@ void SocialMedia::listUsers() const {
       if (currentPage + 1 < totalPages) {
         currentPage++;
       } else {
-        std::cout << "[Thong bao] Day la trang cuoi. Nhan [p] de quay lai hoac [Enter] de thoat.\n";
+        std::cout << "[Thong bao] Day la trang cuoi. Nhan [p] de quay lai hoac "
+                     "[Enter] de thoat.\n";
       }
     } else if (choice == "p" || choice == "P") {
       if (currentPage > 0) {
         currentPage--;
       } else {
-        std::cout << "[Thong bao] Day la trang dau. Nhan [n] de xem trang tiep theo.\n";
+        std::cout << "[Thong bao] Day la trang dau. Nhan [n] de xem trang tiep "
+                     "theo.\n";
       }
     } else {
       break;
@@ -451,13 +453,15 @@ void SocialMedia::printSuggestions(int userID, int maxSuggestions) const {
       if (currentPage + 1 < totalPages) {
         currentPage++;
       } else {
-        std::cout << "[Thong bao] Day la trang cuoi. Nhan [p] de quay lai hoac [Enter] de thoat.\n";
+        std::cout << "[Thong bao] Day la trang cuoi. Nhan [p] de quay lai hoac "
+                     "[Enter] de thoat.\n";
       }
     } else if (choice == "p" || choice == "P") {
       if (currentPage > 0) {
         currentPage--;
       } else {
-        std::cout << "[Thong bao] Day la trang dau. Nhan [n] de xem trang tiep theo.\n";
+        std::cout << "[Thong bao] Day la trang dau. Nhan [n] de xem trang tiep "
+                     "theo.\n";
       }
     } else {
       break;
@@ -556,7 +560,8 @@ bool SocialMedia::exportSuggestions(int userID, int maxSuggestions,
 
   std::ofstream file(filepath);
   if (!file.is_open()) {
-    std::cerr << "[LOI] Khong the tao file \"" << filepath << "\". Vui long kiem tra quyen ghi.\n";
+    std::cerr << "[LOI] Khong the tao file \"" << filepath
+              << "\". Vui long kiem tra quyen ghi.\n";
     return false;
   }
 
@@ -596,7 +601,8 @@ bool SocialMedia::exportSuggestions(int userID, int maxSuggestions,
 bool SocialMedia::exportGraphStats(const std::string &filepath) const {
   std::ofstream file(filepath);
   if (!file.is_open()) {
-    std::cerr << "[LOI] Khong the tao file \"" << filepath << "\". Vui long kiem tra quyen ghi.\n";
+    std::cerr << "[LOI] Khong the tao file \"" << filepath
+              << "\". Vui long kiem tra quyen ghi.\n";
     return false;
   }
 
@@ -656,7 +662,8 @@ bool SocialMedia::exportUserConnections(int userID,
 
   std::ofstream file(filepath);
   if (!file.is_open()) {
-    std::cerr << "[LOI] Khong the tao file \"" << filepath << "\". Vui long kiem tra quyen ghi.\n";
+    std::cerr << "[LOI] Khong the tao file \"" << filepath
+              << "\". Vui long kiem tra quyen ghi.\n";
     return false;
   }
 

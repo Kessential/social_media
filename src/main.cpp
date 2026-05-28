@@ -25,7 +25,7 @@ int readInt(const std::string &prompt) {
       std::cerr << "\n[LOI] Da het du lieu dau vao. Chuong trinh se thoat.\n";
       exit(0);
     }
-    std::cout << "[LOI] Gia tri khong hop le. Vui long nhap mot so nguyen.\n";
+    std::cerr << "[LOI] Gia tri khong hop le. Vui long nhap mot so nguyen.\n";
     clearInput();
   }
 }
@@ -108,7 +108,6 @@ int main() {
       if (network.addUser(id, name)) {
         std::cout << "[OK] Da them thanh cong nguoi dung \"" << name
                   << "\" voi ID " << id << ".\n";
-        ;
       }
       break;
     }
@@ -149,16 +148,80 @@ int main() {
 
     case 8: {
       std::string keyword = readLine("Nhap tu khoa tim kiem: ");
+      if (keyword.empty()) {
+        std::cout << "\n[Thong bao] Vui long nhap tu khoa tim kiem.\n";
+        break;
+      }
       Vector<int> results = network.searchUserByName(keyword);
       if (results.empty()) {
         std::cout << "\n[Thong bao] Khong tim thay nguoi dung nao phu hop voi "
                      "tu khoa \""
                   << keyword << "\".\n";
-      } else {
-        std::cout << "\n[OK] Tim thay " << results.size()
-                  << " nguoi dung phu hop voi tu khoa \"" << keyword << "\":\n";
-        for (size_t i = 0; i < results.size(); ++i) {
-          network.printUserInfo(results[i]);
+        break;
+      }
+      // Sắp xếp kết quả theo ID
+      Sort::sort(results, [](int a, int b) { return a < b; });
+      size_t total = results.size();
+      size_t pageSize = 20;
+      size_t totalPages = (total + pageSize - 1) / pageSize;
+      size_t currentPage = 0;
+      while (true) {
+        std::cout << "\n==================================================\n";
+        std::cout << "        KET QUA TIM KIEM: \"" << keyword << "\"\n";
+        std::cout << "  Trang " << (currentPage + 1) << "/" << totalPages
+                  << " (Hien thi " << (currentPage * pageSize + 1) << " - "
+                  << std::min((currentPage + 1) * pageSize, total) << " / "
+                  << total << " nguoi)\n";
+        std::cout << "--------------------------------------------------\n";
+        std::cout << "  " << std::left << std::setw(6) << "STT" << std::setw(8)
+                  << "ID" << std::setw(25) << "Ten"
+                  << "So ban be\n";
+        std::cout << "--------------------------------------------------\n";
+        size_t start = currentPage * pageSize;
+        size_t end = std::min(start + pageSize, total);
+        for (size_t i = start; i < end; ++i) {
+          int uid = results[i];
+          std::string uname = network.getUserName(uid);
+          int friendCount = 0;
+          HashSet<int> friends = network.getDirectConnections(uid);
+          friendCount = static_cast<int>(friends.size());
+          std::cout << "  " << std::left << std::setw(6) << (i + 1)
+                    << std::setw(8) << uid << std::setw(25) << uname
+                    << friendCount << "\n";
+        }
+        std::cout << "--------------------------------------------------\n";
+        std::cout << "Phim tat: [n] Trang sau | [p] Trang truoc | "
+                     "[Enter] Xem chi tiet | [q] Ve menu chinh\n";
+        std::cout << "Chon hoac nhap ID nguoi dung de xem chi tiet: ";
+        std::string nav;
+        std::getline(std::cin, nav);
+        if (nav == "n" || nav == "N") {
+          if (currentPage + 1 < totalPages)
+            currentPage++;
+          else
+            std::cout << "[Thong bao] Day la trang cuoi. Nhan [p] de quay lai "
+                         "hoac [q] de thoat.\n";
+        } else if (nav == "p" || nav == "P") {
+          if (currentPage > 0)
+            currentPage--;
+          else
+            std::cout << "[Thong bao] Day la trang dau. Nhan [n] de xem trang "
+                         "tiep theo.\n";
+        } else if (nav == "q" || nav == "Q" || nav.empty()) {
+          break;
+        } else {
+          // Thử parse ID để xem chi tiết
+          try {
+            int viewID = std::stoi(nav);
+            if (network.userExists(viewID)) {
+              network.printUserInfo(viewID);
+            } else {
+              std::cerr << "[LOI] Nguoi dung ID " << viewID
+                        << " khong ton tai!\n";
+            }
+          } catch (...) {
+            std::cerr << "[LOI] Lua chon khong hop le.\n";
+          }
         }
       }
       break;
@@ -182,6 +245,7 @@ int main() {
 
     case 10: {
       int id = readInt("Nhap User ID: ");
+      clearInput();
       if (!network.userExists(id)) {
         std::cerr << "[LOI] Nguoi dung voi ID " << id << " khong ton tai!\n";
         break;
@@ -192,7 +256,8 @@ int main() {
 
       size_t totalFoF = fofVector.size();
       if (totalFoF == 0) {
-        std::cout << "\n[Thong bao] Nguoi dung nay chua co \"ban cua ban\" trong mang.\n";
+        std::cout << "\n[Thong bao] Nguoi dung nay chua co \"ban cua ban\" "
+                     "trong mang.\n";
         break;
       }
 
@@ -315,7 +380,7 @@ int main() {
         break;
       }
       default:
-        std::cout << "[LOI] Lua chon khong hop le. Vui long nhap lai (0-3).\n";
+        std::cerr << "[LOI] Lua chon khong hop le. Vui long nhap lai (0-3).\n";
         break;
       }
       break;
@@ -328,7 +393,7 @@ int main() {
     }
 
     default:
-      std::cout << "[LOI] Lua chon khong hop le. Vui long nhap lai (0-14).\n";
+      std::cerr << "[LOI] Lua chon khong hop le. Vui long nhap lai (0-14).\n";
       break;
     }
   }
