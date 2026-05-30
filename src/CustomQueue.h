@@ -1,5 +1,6 @@
 #pragma once
 #include <cstddef>
+#include <stdexcept>
 
 template <typename T> class Queue {
 private:
@@ -64,9 +65,17 @@ public:
     --count;
   }
 
-  T &front() { return head->data; }
+  T &front() {
+    if (empty())
+      throw std::out_of_range("Queue rong!");
+    return head->data;
+  }
 
-  const T &front() const { return head->data; }
+  const T &front() const {
+    if (empty())
+      throw std::out_of_range("Queue rong!");
+    return head->data;
+  }
 
   bool empty() const { return count == 0; }
   size_t size() const { return count; }

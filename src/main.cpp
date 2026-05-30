@@ -183,15 +183,16 @@ int main() {
           int uid = results[i];
           std::string uname = network.getUserName(uid);
           int friendCount = 0;
-          HashSet<int> friends = network.getDirectConnections(uid);
-          friendCount = static_cast<int>(friends.size());
+          const HashSet<int> *friends = network.getDirectConnections(uid);
+          friendCount =
+              friends != nullptr ? static_cast<int>(friends->size()) : 0;
           std::cout << "  " << std::left << std::setw(6) << (i + 1)
                     << std::setw(8) << uid << std::setw(25) << uname
                     << friendCount << "\n";
         }
         std::cout << "--------------------------------------------------\n";
         std::cout << "Phim tat: [n] Trang sau | [p] Trang truoc | "
-                     "[Enter] Xem chi tiet | [q] Ve menu chinh\n";
+                     "[Enter] Ve menu chinh\n";
         std::cout << "Chon hoac nhap ID nguoi dung de xem chi tiet: ";
         std::string nav;
         std::getline(std::cin, nav);
@@ -200,14 +201,14 @@ int main() {
             currentPage++;
           else
             std::cout << "[Thong bao] Day la trang cuoi. Nhan [p] de quay lai "
-                         "hoac [q] de thoat.\n";
+                         "hoac [Enter] de thoat.\n";
         } else if (nav == "p" || nav == "P") {
           if (currentPage > 0)
             currentPage--;
           else
             std::cout << "[Thong bao] Day la trang dau. Nhan [n] de xem trang "
                          "tiep theo.\n";
-        } else if (nav == "q" || nav == "Q" || nav.empty()) {
+        } else if (nav.empty()) {
           break;
         } else {
           // Thử parse ID để xem chi tiết
@@ -233,11 +234,12 @@ int main() {
         std::cerr << "[LOI] Nguoi dung voi ID " << id << " khong ton tai!\n";
         break;
       }
-      HashSet<int> friends = network.getDirectConnections(id);
+      const HashSet<int> *friends = network.getDirectConnections(id);
+      size_t friendCount = friends != nullptr ? friends->size() : 0;
       std::cout << "\nDanh sach ban be truc tiep cua "
                 << network.getUserName(id) << " (ID: " << id
-                << "): " << friends.size() << " nguoi\n";
-      friends.forEach([&](int fid) {
+                << "): " << friendCount << " nguoi\n";
+      friends->forEach([&](int fid) {
         std::cout << "  " << fid << " - " << network.getUserName(fid) << "\n";
       });
       break;

@@ -1,5 +1,6 @@
 #pragma once
 #include <cstddef>
+#include <stdexcept>
 #include <utility>
 
 template <typename T> class Vector {
@@ -98,9 +99,17 @@ public:
 
   const T &operator[](size_t index) const { return data[index]; }
 
-  T &back() { return data[len - 1]; }
+  T &back() {
+    if (empty())
+      throw std::out_of_range("Vector rong!");
+    return data[len - 1];
+  }
 
-  const T &back() const { return data[len - 1]; }
+  const T &back() const {
+    if (empty())
+      throw std::out_of_range("Vector rong!");
+    return data[len - 1];
+  }
 
   size_t size() const { return len; }
 
@@ -110,10 +119,7 @@ public:
 
   // Thay đổi kích thước Vector, khởi tạo giá trị mặc định cho phần tử mới
   void resize(size_t newLen) {
-    if (newLen < len) {
-      for (size_t i = newLen; i < len; ++i)
-        data[i] = T();
-    } else {
+    if (newLen >= len) {
       if (newLen > cap)
         grow(newLen);
       for (size_t i = len; i < newLen; ++i)

@@ -291,10 +291,10 @@ Vector<int> SocialMedia::searchUserByName(const std::string &keyword) const {
 // Thuật toán lõi — BFS
 // ============================================================================
 
-HashSet<int> SocialMedia::getDirectConnections(int userID) const {
+const HashSet<int> *SocialMedia::getDirectConnections(int userID) const {
   if (!adjList.contains(userID))
-    return HashSet<int>();
-  return adjList.get(userID);
+    return nullptr;
+  return &adjList.get(userID);
 }
 
 HashSet<int> SocialMedia::getFriendsOfFriends(int userID) const {
@@ -642,12 +642,23 @@ bool SocialMedia::exportGraphStats(const std::string &filepath) const {
 
   // Xuất danh sách tất cả người dùng kèm số bạn bè
   file << "\n=== DANH SACH NGUOI DUNG ===\n";
+  struct ExportEntry {
+    int uid;
+    std::string name;
+    int deg;
+  };
+  Vector<ExportEntry> entries;
   users.forEach([&](const int &uid, const std::string &name) {
-    int deg = 0;
-    if (adjList.contains(uid))
-      deg = static_cast<int>(adjList.get(uid).size());
-    file << "ID: " << uid << " | Ten: " << name << " | Ban be: " << deg << "\n";
+    int deg = adjList.contains(uid) ? (int)adjList.get(uid).size() : 0;
+    entries.push_back({uid, name, deg});
   });
+  Sort::sort(entries, [](const ExportEntry &a, const ExportEntry &b) {
+    return a.uid < b.uid;
+  });
+  for (size_t i = 0; i < entries.size(); ++i) {
+    file << "ID: " << entries[i].uid << " | Ten: " << entries[i].name
+         << " | Ban be: " << entries[i].deg << "\n";
+  }
 
   file.close();
   return true;

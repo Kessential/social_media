@@ -1,5 +1,5 @@
 CXX      := g++
-CXXFLAGS := -std=c++17 -Wall -Wextra -O2
+CXXFLAGS := -std=c++17 -Wall -Wextra
 
 SRCDIR   := src
 BUILDDIR := build
@@ -16,6 +16,14 @@ else
     TARGET := SocialMedia
     MKDIR   = mkdir -p $(BUILDDIR)
     RMCMD   = rm -rf $(BUILDDIR) $(TARGET)
+endif
+
+ifeq ($(DEBUG), 1)
+    CXXFLAGS := $(CXXFLAGS_COMMON) -g3 -O0
+    BUILD_MSG := "--- BUILDING IN DEBUG MODE (-g3 -O0) ---"
+else
+    CXXFLAGS := $(CXXFLAGS_COMMON) -O2
+    BUILD_MSG := "--- BUILDING IN RELEASE MODE (-O2) ---"
 endif
 
 all: $(TARGET)

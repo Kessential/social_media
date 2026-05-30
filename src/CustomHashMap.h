@@ -25,13 +25,12 @@ private:
 
   void rehash(size_t newBucketCount) {
     HashNode **newTable = new HashNode *[newBucketCount]();
-
+    std::hash<K> hashFn;
     for (size_t i = 0; i < bucketCount; ++i) {
       HashNode *curr = table[i];
       while (curr != nullptr) {
         HashNode *next = curr->next;
 
-        std::hash<K> hashFn;
         size_t newIdx = hashFn(curr->key) % newBucketCount;
 
         curr->next = newTable[newIdx];

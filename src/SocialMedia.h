@@ -54,7 +54,7 @@ public:
   Vector<int> searchUserByName(const std::string &keyword) const;
 
   // === Thuật toán lõi (BFS) ===
-  HashSet<int> getDirectConnections(int userID) const;
+  const HashSet<int>* getDirectConnections(int userID) const;
   HashSet<int> getFriendsOfFriends(int userID) const;
   Vector<FriendSuggestion> suggestFriends(int userID,
                                           int maxSuggestions = 5) const;
