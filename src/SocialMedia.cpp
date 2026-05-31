@@ -166,7 +166,7 @@ void SocialMedia::listUsers() const {
     return;
   }
 
-  size_t pageSize = 50;
+  size_t pageSize = 20;
   size_t totalPages = (totalUsers + pageSize - 1) / pageSize;
   if (totalPages == 0)
     totalPages = 1;
@@ -196,6 +196,9 @@ void SocialMedia::listUsers() const {
     }
 
     std::cout << "--------------------------------------------------\n";
+    if (totalPages <= 1)
+      break;
+
     std::cout << "Phim tat: [n] Trang sau | [p] Trang truoc | [Enter] Ve menu "
                  "chinh\n";
     std::cout << "Lua chon cua ban: ";
@@ -239,22 +242,65 @@ void SocialMedia::printUserInfo(int userID) const {
     std::cout << std::left << std::setw(15) << "  So ban be:" << friends.size()
               << "\n";
     std::cout << "==================================================\n";
-    std::cout << "                DANH SACH BAN BE                  \n";
-    std::cout << "--------------------------------------------------\n";
-    std::cout << "  " << std::left << std::setw(6) << "STT" << std::setw(12)
-              << "ID" << "Ten\n";
-    std::cout << "--------------------------------------------------\n";
 
     Vector<int> sortedFriends = friends.toVector();
     Sort::sort(sortedFriends);
 
-    for (size_t i = 0; i < sortedFriends.size(); ++i) {
-      int fid = sortedFriends[i];
-      std::string fname = users.contains(fid) ? users.get(fid) : "User co lap";
-      std::cout << "  " << std::left << std::setw(6) << (i + 1) << std::setw(12)
-                << fid << fname << "\n";
+    size_t totalFriends = sortedFriends.size();
+    size_t pageSize = 20;
+    size_t totalPages = (totalFriends + pageSize - 1) / pageSize;
+    size_t currentPage = 0;
+
+    while (true) {
+      std::cout << "\n==================================================\n";
+      std::cout << "                DANH SACH BAN BE                  \n";
+      std::cout << "  Trang " << (currentPage + 1) << "/" << totalPages
+                << " (Hien thi " << (currentPage * pageSize + 1) << " - "
+                << std::min((currentPage + 1) * pageSize, totalFriends) << " / "
+                << totalFriends << " nguoi)\n";
+      std::cout << "--------------------------------------------------\n";
+      std::cout << "  " << std::left << std::setw(6) << "STT" << std::setw(12)
+                << "ID" << "Ten\n";
+      std::cout << "--------------------------------------------------\n";
+
+      size_t start = currentPage * pageSize;
+      size_t end = std::min(start + pageSize, totalFriends);
+
+      for (size_t i = start; i < end; ++i) {
+        int fid = sortedFriends[i];
+        std::string fname =
+            users.contains(fid) ? users.get(fid) : "User co lap";
+        std::cout << "  " << std::left << std::setw(6) << (i + 1)
+                  << std::setw(12) << fid << fname << "\n";
+      }
+      std::cout << "--------------------------------------------------\n";
+
+      if (totalPages <= 1)
+        break;
+
+      std::cout
+          << "Phim tat: [n] Trang sau | [p] Trang truoc | [Enter] Thoat\n";
+      std::cout << "Lua chon cua ban: ";
+      std::string choice;
+      std::getline(std::cin, choice);
+      if (choice == "n" || choice == "N") {
+        if (currentPage + 1 < totalPages) {
+          currentPage++;
+        } else {
+          std::cout << "[Thong bao] Day la trang cuoi. Nhan [p] de quay lai "
+                       "hoac [Enter] de thoat.\n";
+        }
+      } else if (choice == "p" || choice == "P") {
+        if (currentPage > 0) {
+          currentPage--;
+        } else {
+          std::cout << "[Thong bao] Day la trang dau. Nhan [n] de xem trang "
+                       "tiep theo.\n";
+        }
+      } else {
+        break;
+      }
     }
-    std::cout << "--------------------------------------------------\n";
   } else {
     std::cout << std::left << std::setw(15) << "  So ban be:" << 0 << "\n";
     std::cout << "==================================================\n";
@@ -393,7 +439,7 @@ void SocialMedia::printSuggestions(int userID, int maxSuggestions) const {
 
   // In danh sách gợi ý theo trang
   size_t totalSuggestions = suggestions.size();
-  size_t pageSize = 50;
+  size_t pageSize = 20;
   size_t totalPages = (totalSuggestions + pageSize - 1) / pageSize;
   if (totalPages == 0)
     totalPages = 1;
@@ -444,6 +490,9 @@ void SocialMedia::printSuggestions(int userID, int maxSuggestions) const {
     }
 
     std::cout << "--------------------------------------------------\n";
+    if (totalPages <= 1)
+      break;
+
     std::cout << "Phim tat: [n] Trang sau | [p] Trang truoc | [Enter] Ve menu "
                  "chinh\n";
     std::cout << "Lua chon cua ban: ";

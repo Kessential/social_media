@@ -142,6 +142,7 @@ int main() {
 
     case 7: {
       int id = readInt("Nhap User ID: ");
+      clearInput();
       network.printUserInfo(id);
       break;
     }
@@ -235,13 +236,16 @@ int main() {
         break;
       }
       const HashSet<int> *friends = network.getDirectConnections(id);
-      size_t friendCount = friends != nullptr ? friends->size() : 0;
-      std::cout << "\nDanh sach ban be truc tiep cua "
-                << network.getUserName(id) << " (ID: " << id
-                << "): " << friendCount << " nguoi\n";
-      friends->forEach([&](int fid) {
-        std::cout << "  " << fid << " - " << network.getUserName(fid) << "\n";
-      });
+      if (friends != nullptr) {
+        std::cout << "\nDanh sach ban be truc tiep cua "
+                  << network.getUserName(id) << " (ID: " << id
+                  << "): " << friends->size() << " nguoi\n";
+        friends->forEach([&](int fid) {
+          std::cout << "  " << fid << " - " << network.getUserName(fid) << "\n";
+        });
+      } else {
+        std::cout << "\n[Thong bao] Nguoi dung nay chua co ban be nao.\n";
+      }
       break;
     }
 
@@ -263,7 +267,7 @@ int main() {
         break;
       }
 
-      size_t pageSize = 50;
+      size_t pageSize = 20;
       size_t totalPages = (totalFoF + pageSize - 1) / pageSize;
       size_t currentPage = 0;
 
@@ -292,6 +296,9 @@ int main() {
           std::cout << "  " << std::left << std::setw(6) << (i + 1)
                     << std::setw(12) << fid << fname << "\n";
         }
+
+        if (totalPages <= 1)
+          break;
 
         std::cout << "--------------------------------------------------\n";
         std::cout << "Phim tat: [n] Trang sau | [p] Trang truoc | [Enter] Ve "
