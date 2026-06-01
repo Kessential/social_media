@@ -764,57 +764,92 @@ bool SocialMedia::exportUserConnections(int userID,
 // ============================================================================
 
 void SocialMedia::measurePerformance(int testUserID) const {
-  std::cout << "\n=== DO HIEU SUAT (User ID: " << testUserID << ") ===\n";
-  std::cout << std::string(50, '-') << "\n";
+    std::cout << "\n=== DO HIEU SUAT THEO BO DU LIEU TANG DAN ===\n";
+    std::cout << std::string(60, '-') << "\n";
 
-  if (!users.contains(testUserID)) {
-    std::cerr << "[LOI] Nguoi dung " << testUserID << " khong ton tai!\n";
-    return;
-  }
+    if (!users.contains(testUserID)) {
+        std::cerr << "[LOI] Nguoi dung " << testUserID << " khong ton tai!\n";
+        return;
+    }
 
-  // 1. BFS - Tìm bạn của bạn
-  {
-    auto start = std::chrono::high_resolution_clock::now();
-    HashSet<int> fof = getFriendsOfFriends(testUserID);
-    auto end = std::chrono::high_resolution_clock::now();
-    auto duration =
-        std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    std::cout << "BFS (ban cua ban):       " << std::setw(10)
-              << duration.count() << " us | Tim thay: " << fof.size()
-              << " nguoi\n";
-  }
+    // Thu thap danh sach toan bo user, sap xep theo ID
+    Vector<int> allUsers;
+    users.forEach([&](const int& uid, const std::string&) {
+        allUsers.push_back(uid);
+    });
+    Sort::sort(allUsers);
 
-  // 2. Gợi ý kết bạn
-  {
-    auto start = std::chrono::high_resolution_clock::now();
-    Vector<FriendSuggestion> suggestions = suggestFriends(testUserID, 10);
-    auto end = std::chrono::high_resolution_clock::now();
-    auto duration =
-        std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    std::cout << "Goi y ket ban (top 10):  " << std::setw(10)
-              << duration.count() << " us | Ket qua: " << suggestions.size()
-              << " goi y\n";
-  }
+    int totalUsers = static_cast<int>(allUsers.size());
 
-  // 3. Export gợi ý kết bạn ra file
-  {
-    auto start = std::chrono::high_resolution_clock::now();
-#ifdef _WIN32
-    exportSuggestions(testUserID, 10, "NUL");
-#else
-    exportSuggestions(testUserID, 10, "/dev/null");
-#endif
-    auto end = std::chrono::high_resolution_clock::now();
-    auto duration =
-        std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    std::cout << "Export goi y (top 10):   " << std::setw(10)
-              << duration.count() << " us\n";
-  }
+    // Cac moc kich thuoc benchmark
+    int levels[] = {50, 200, 500, 1000, 2000, totalUsers};
+    int numLevels = static_cast<int>(sizeof(levels) / sizeof(levels[0]));
 
-  std::cout << std::string(50, '-') << "\n";
-  std::cout << "Tong so nguoi dung: " << users.size()
-            << " | Tong so ket noi: " << getEdgeCount() << "\n";
+    // Header bang ket qua
+    std::cout << std::left
+              << std::setw(12) << "N (users)"
+              << std::setw(20) << "BFS (us, avg)"
+              << std::setw(20) << "Suggest (us, avg)"
+              << "Ghi chu\n";
+    std::cout << std::string(60, '-') << "\n";
+
+    for (int lv = 0; lv < numLevels; ++lv) {
+        int N = levels[lv];
+        if (N > totalUsers) N = totalUsers;
+
+        // Tranh lap lai cung moc
+        if (lv > 0 && N == levels[lv - 1]) continue;
+
+        // Lay tap con N user dau tien lam mau do
+        // Chon user o vi tri giua lam testUser cho moc nay
+        int sampleSize = std::min(N, 10); // do toi da 10 user trong tap
+        long long bfsTotalUs = 0, suggestTotalUs = 0;
+        int measured = 0;
+
+        for (int i = 0; i < sampleSize; ++i) {
+            int idx = (N / sampleSize) * i; // phan bo deu trong N user dau
+            if (idx >= totalUsers) break;
+            int uid = allUsers[idx];
+
+            // BFS
+            {
+                auto t0 = std::chrono::high_resolution_clock::now();
+                getFriendsOfFriends(uid);
+                auto t1 = std::chrono::high_resolution_clock::now();
+                bfsTotalUs += std::chrono::duration_cast<
+                    std::chrono::microseconds>(t1 - t0).count();
+            }
+            // Suggest
+            {
+                auto t0 = std::chrono::high_resolution_clock::now();
+                suggestFriends(uid, 10);
+                auto t1 = std::chrono::high_resolution_clock::now();
+                suggestTotalUs += std::chrono::duration_cast<
+                    std::chrono::microseconds>(t1 - t0).count();
+            }
+            ++measured;
+        }
+
+        long long bfsAvg     = measured > 0 ? bfsTotalUs     / measured : 0;
+        long long suggestAvg = measured > 0 ? suggestTotalUs / measured : 0;
+        std::string note = (N == totalUsers) ? "<-- toan bo" : "";
+
+        std::cout << std::left
+                  << std::setw(12) << N
+                  << std::setw(20) << bfsAvg
+                  << std::setw(20) << suggestAvg
+                  << note << "\n";
+
+        if (N == totalUsers) break;
+    }
+
+    std::cout << std::string(60, '-') << "\n";
+    std::cout << "Tong so nguoi dung trong he thong: " << totalUsers
+              << " | Tong so ket noi: " << getEdgeCount() << "\n";
+    std::cout << "Luu y: moi moc N do trung binh tren " 
+              << std::min(10, totalUsers) << " user mau.\n";
 }
+
 
 // ============================================================================
 // Helpers

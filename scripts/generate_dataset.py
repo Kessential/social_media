@@ -799,6 +799,101 @@ def generate_testcases():
             "  - Khong crash, chi xuat thong bao loi\n"
         ))
 
+    # ── TC40: Benchmark hieu nang — bo du lieu cuc lon ───────────────────────
+    # Muc tieu: do hieu suat BFS + suggestFriends + measurePerformance tren do
+    # thi scale-free 50,000 users / ~300,000 edges (giong mang xa hoi thuc te).
+    # Cau truc:
+    #   - 50,000 nguoi dung
+    #   - 200 cum cong dong (community), moi cum ~250 user, ket noi noi bo day dac
+    #   - 500 hub (influencer) moi hub noi voi 200 user ngau nhien (luat luy thua)
+    #   - Canh lien cum de tao cac thanh phan lien thong lon
+    print("\n  [TC40] Dang tao bo du lieu benchmark cuc lon (50,000 users)...")
+    _tc40_rng = random.Random(2024)
+
+    TC40_USERS        = 50_000
+    TC40_COMMUNITIES  = 200
+    TC40_INTRA        = 200_000   # canh noi bo cum (day dac)
+    TC40_INTER        = 50_000    # canh lien cum
+    TC40_HUBS         = 500       # so hub influencer
+    TC40_HUB_EDGES    = 50_000    # canh bo sung tu hub
+
+    # Tao users
+    tc40_users: dict[int, str] = {}
+    for uid in range(1, TC40_USERS + 1):
+        tc40_users[uid] = generate_name(_tc40_rng)
+
+    # Phan chia vao cac cum
+    tc40_ids = list(range(1, TC40_USERS + 1))
+    _tc40_rng.shuffle(tc40_ids)
+    tc40_communities: list[list[int]] = [[] for _ in range(TC40_COMMUNITIES)]
+    for i, uid in enumerate(tc40_ids):
+        tc40_communities[i % TC40_COMMUNITIES].append(uid)
+
+    # Sinh canh
+    tc40_edges: set[tuple[int, int]] = set()
+
+    def _add40(u: int, v: int):
+        if u != v:
+            tc40_edges.add((min(u, v), max(u, v)))
+
+    # Canh noi bo cum
+    for _ in range(TC40_INTRA):
+        comm = _tc40_rng.choice(tc40_communities)
+        if len(comm) >= 2:
+            u, v = _tc40_rng.sample(comm, 2)
+            _add40(u, v)
+
+    # Canh lien cum
+    for _ in range(TC40_INTER):
+        c1, c2 = _tc40_rng.sample(range(TC40_COMMUNITIES), 2)
+        u = _tc40_rng.choice(tc40_communities[c1])
+        v = _tc40_rng.choice(tc40_communities[c2])
+        _add40(u, v)
+
+    # Canh hub (luat luy thua)
+    tc40_hubs = _tc40_rng.sample(tc40_ids, TC40_HUBS)
+    for _ in range(TC40_HUB_EDGES):
+        hub    = _tc40_rng.choice(tc40_hubs)
+        target = _tc40_rng.randint(1, TC40_USERS)
+        _add40(hub, target)
+
+    # Lay 3 user dai dien de ghi vao expected: hub co nhieu ban nhat
+    hub_degrees = sorted(tc40_hubs,
+                         key=lambda h: sum(1 for e in tc40_edges
+                                           if h in e),
+                         reverse=True)
+    sample_hub   = hub_degrees[0] if hub_degrees else 1
+    sample_mid   = tc40_ids[TC40_USERS // 2]
+    sample_leaf  = next((u for u in tc40_ids
+                         if not any(u in e for e in list(tc40_edges)[:500])), tc40_ids[-1])
+
+    write_testcase("tc40_large_scale_benchmark",
+        users=tc40_users,
+        edges=sorted(tc40_edges),
+        expected=(
+            "TC40: Benchmark hieu nang — bo du lieu cuc lon\n"
+            f"Tong so nguoi dung : {TC40_USERS:,}\n"
+            f"Tong so ket noi    : {len(tc40_edges):,}\n"
+            f"So cum cong dong   : {TC40_COMMUNITIES}\n"
+            f"So hub influencer  : {TC40_HUBS}\n"
+            "\n"
+            "Muc tieu: Kiem tra measurePerformance (option 14) tren bo du lieu nay.\n"
+            "Ket qua mong doi (tham khao, co the chenh lech tuy may):\n"
+            "  BFS getFriendsOfFriends     : < 50 ms/lan trung binh\n"
+            "  Goi y ket ban suggestFriends: < 200 ms/lan trung binh\n"
+            "\n"
+            "Cac user mau de kiem tra bang tay:\n"
+            f"  Hub (nhieu ban nhat)  : ID {sample_hub}\n"
+            f"  User trung binh       : ID {sample_mid}\n"
+            f"  User it ban           : ID {sample_leaf}\n"
+            "\n"
+            "Cach chay:\n"
+            "  1. Tai du lieu: users.csv + edges.txt trong thu muc tc40_large_scale_benchmark\n"
+            "  2. Chon option 14 (Do hieu suat) -> nhap bat ky User ID hop le\n"
+            "  3. Quan sat bang ket qua benchmark theo cac moc N tang dan\n"
+            "  4. Neu muon test BFS thu cong: option 10 voi ID cac user mau tren\n"
+        ))
+
     print("=" * 60)
     print(f"  Tat ca test case duoc ghi vao: {os.path.join(OUTPUT_DIR, 'testcases')}")
     print("=" * 60)

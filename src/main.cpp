@@ -236,15 +236,69 @@ int main() {
         break;
       }
       const HashSet<int> *friends = network.getDirectConnections(id);
-      if (friends != nullptr) {
-        std::cout << "\nDanh sach ban be truc tiep cua "
-                  << network.getUserName(id) << " (ID: " << id
-                  << "): " << friends->size() << " nguoi\n";
-        friends->forEach([&](int fid) {
-          std::cout << "  " << fid << " - " << network.getUserName(fid) << "\n";
-        });
-      } else {
+      if (friends == nullptr || friends->size() == 0) {
         std::cout << "\n[Thong bao] Nguoi dung nay chua co ban be nao.\n";
+        break;
+      }
+
+      // Chuyen sang vector de phan trang
+      Vector<int> friendList = friends->toVector();
+      Sort::sort(friendList);
+
+      size_t total = friendList.size();
+      size_t pageSize = 20;
+      size_t totalPages = (total + pageSize - 1) / pageSize;
+      size_t currentPage = 0;
+
+      while (true) {
+        std::cout << "\n==================================================\n";
+        std::cout << "       BAN BE TRUC TIEP CUA:\n";
+        std::cout << "  " << network.getUserName(id) << " (ID: " << id << ")\n";
+        std::cout << "  Trang " << (currentPage + 1) << "/" << totalPages
+                  << " (Hien thi " << (currentPage * pageSize + 1) << " - "
+                  << std::min((currentPage + 1) * pageSize, total) << " / "
+                  << total << " nguoi)\n";
+        std::cout << "--------------------------------------------------\n";
+        std::cout << "  " << std::left << std::setw(6) << "STT" << std::setw(12)
+                  << "ID"
+                  << "Ten\n";
+        std::cout << "--------------------------------------------------\n";
+
+        size_t start = currentPage * pageSize;
+        size_t end = std::min(start + pageSize, total);
+        for (size_t i = start; i < end; ++i) {
+          int fid = friendList[i];
+          std::string fname = network.getUserName(fid);
+          if (fname.empty())
+            fname = "User co lap";
+          std::cout << "  " << std::left << std::setw(6) << (i + 1)
+                    << std::setw(12) << fid << fname << "\n";
+        }
+        std::cout << "--------------------------------------------------\n";
+
+        if (totalPages <= 1)
+          break;
+
+        std::cout << "Phim tat: [n] Trang sau | [p] Trang truoc | [Enter] Ve "
+                     "menu chinh\n";
+        std::cout << "Lua chon cua ban: ";
+        std::string nav;
+        std::getline(std::cin, nav);
+        if (nav == "n" || nav == "N") {
+          if (currentPage + 1 < totalPages)
+            currentPage++;
+          else
+            std::cout << "[Thong bao] Day la trang cuoi. Nhan [p] de quay lai "
+                         "hoac [Enter] de thoat.\n";
+        } else if (nav == "p" || nav == "P") {
+          if (currentPage > 0)
+            currentPage--;
+          else
+            std::cout << "[Thong bao] Day la trang dau. Nhan [n] de xem trang "
+                         "tiep theo.\n";
+        } else {
+          break;
+        }
       }
       break;
     }
