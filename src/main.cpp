@@ -231,6 +231,7 @@ int main() {
 
     case 9: {
       int id = readInt("Nhap User ID: ");
+      clearInput();
       if (!network.userExists(id)) {
         std::cerr << "[LOI] Nguoi dung voi ID " << id << " khong ton tai!\n";
         break;

@@ -199,8 +199,9 @@ def generate_testcases():
             "TC01: Them ket noi giua nguoi dung khong ton tai\n"
             "Chi co user 1 va 2 ton tai.\n"
             "addConnection(1, 2) -> thanh cong (ca 2 ton tai)\n"
-            "addConnection(999, 888) -> canh bao, bo qua (ca 2 khong ton tai)\n"
-            "addConnection(1, 999) -> canh bao, bo qua (999 khong ton tai)\n"
+            "addConnection(999, 888) -> '[CANH BAO] Mot trong hai User ID khong ton tai: 999 <-> 888. Bo qua ket noi nay.'\n"
+            "addConnection(1, 999) -> '[CANH BAO] Mot trong hai User ID khong ton tai: 1 <-> 999. Bo qua ket noi nay.'\n"
+            "  (Luu y: ca 2 truong hop deu dung CUNG thong bao, khong phan biet 1 hay 2 user sai)\n"
             "Ket qua: getEdgeCount() = 1 (chi co canh 1-2)\n"
             "Kiem tra: Khong crash, chi canh hop le duoc them.\n"
         ))
@@ -234,7 +235,8 @@ def generate_testcases():
         expected=(
             "TC03: removeUser voi user khong ton tai\n"
             "removeUser(9999) -> xuat '[LOI] Nguoi dung 9999 khong ton tai!'\n"
-            "removeUser(0) -> xuat loi tuong tu\n"
+            "removeUser(0) -> xuat '[LOI] Nguoi dung 0 khong ton tai!'\n"
+            "  (moi user ID khong ton tai se in chinh xac ID do trong thong bao loi)\n"
             "Ket qua mong doi:\n"
             "  - getUserCount() = 2 (khong thay doi)\n"
             "  - getEdgeCount() = 1 (khong thay doi)\n"
@@ -247,11 +249,12 @@ def generate_testcases():
         edges=[(1,2)],
         expected=(
             "TC04: removeConnection voi ket noi khong ton tai\n"
-            "removeConnection(1, 3) -> xuat '[LOI] Ket noi 1 <-> 3 khong ton tai!'\n"
+            "removeConnection(1, 3) -> '[LOI] Ket noi giua User ID 1 va User ID 3 khong ton tai.'\n"
             "  (user 1 va 3 ton tai nhung khong co canh)\n"
-            "removeConnection(1, 9999) -> xuat '[LOI] Nguoi dung khong ton tai!'\n"
+            "removeConnection(1, 9999) -> '[LOI] Mot trong hai User ID khong ton tai. Khong the xoa ket noi.'\n"
             "  (user 9999 khong ton tai)\n"
-            "removeConnection(9999, 8888) -> xuat '[LOI] Nguoi dung khong ton tai!'\n"
+            "removeConnection(9999, 8888) -> '[LOI] Mot trong hai User ID khong ton tai. Khong the xoa ket noi.'\n"
+            "  (Luu y: ca 2 truong hop user khong ton tai deu dung CUNG thong bao chung)\n"
             "Ket qua mong doi:\n"
             "  - getEdgeCount() = 1 (chi co canh 1-2, khong thay doi)\n"
             "  - Khong crash, chi xuat thong bao loi\n"
@@ -351,7 +354,13 @@ def generate_testcases():
         edges=[(2, 2)],
         expected=(
             "TC10: File CSV chua ID dang chu (abc) khong hop le\n"
-            "std::stoi('abc') se nem ra ngoai le va gay crash chuong trinh neu ko co try-catch.\n"
+            "Dong 'abc,NguoiDungLoiDinhDang' -> stoi('abc') nem ngoai le -> '[CANH BAO] Dinh dang dong khong hop le, bo qua'\n"
+            "Dong '2,Binh' -> them thanh cong user ID=2\n"
+            "Canh (2,2) la tu ket noi -> '[CANH BAO] Khong the tu ket noi toi chinh minh (User ID: 2)'\n"
+            "Ket qua mong doi:\n"
+            "  - getUserCount() = 1 (chi co user 2 'Binh')\n"
+            "  - getEdgeCount() = 0 (canh tu ket noi bi bo qua)\n"
+            "  - Khong crash nho co try-catch trong loadUsersFromFile\n"
         ))
 
     # ── TC11: Ten nguoi dung co ky tu dac biet (dau phay, ngoac kep) ─────────
@@ -482,9 +491,11 @@ def generate_testcases():
         edges=[(1, 2), (1, 4), (2, 4)],
         expected=(
             "TC18: Nguoi dung co lap\n"
-            "User 3 (Charlie) co 0 ban be.\n"
-            "suggestFriends(3) -> [] (Trong, khong co bat ky ket noi nao)\n"
-            "suggestFriends(1) -> goi y nguoi dung khong ket noi truc tiep\n"
+            "User 3 (Charlie) co 0 ban be — hoan toan co lap.\n"
+            "suggestFriends(3) -> [] (Trong, khong co bat ky ket noi nao de BFS)\n"
+            "suggestFriends(1) -> [] (Ban cua 1: {2,4}; ban cua 2: {1,4}; ban cua 4: {1,2})\n"
+            "  -> tat ca FoF deu da la ban truc tiep hoac chinh user 1, khong con ai de goi y)\n"
+            "  User 3 (Charlie) KHONG bao gio duoc goi y vi khong co duong ket noi toi user 1.\n"
         ))
 
     # ── TC19: Chi co duy nhat mot nguoi ban ────────────────────────────────────
@@ -544,9 +555,10 @@ def generate_testcases():
         expected=(
             "TC23: Gioi han maxSuggestions\n"
             "Nguoi dung 1 -> 1 ban (nguoi dung 2). Nguoi dung 2 -> 10 ban khac (3-12).\n"
-            "suggestFriends(1, 5) -> dung 5 ket qua (bi gioi han)\n"
-            "suggestFriends(1, 20) -> dung 10 ket qua (tat ca ket noi san co)\n"
-            "suggestFriends(1, 0) -> 0 ket qua (bien max=0)\n"
+            "suggestFriends(1, 5) -> dung 5 ket qua (bi gioi han boi maxSuggestions=5)\n"
+            "suggestFriends(1, 20) -> dung 10 ket qua (tat ca FoF san co, khong du 20)\n"
+            "suggestFriends(1, 0) -> printSuggestions in '[LOI] So luong goi y phai lon hon 0.'\n"
+            "  (maxSuggestions<=0 khong tra ve 0 ket qua ma thoat som voi thong bao loi)\n"
         ))
 
 
@@ -640,7 +652,7 @@ def generate_testcases():
             "  - User 4: 'Pham Minh' -> KHONG match (khong chua 'an')\n"
             "searchUserByName(\"BINH\") -> tim thay user 2 ('Tran Thi Binh')\n"
             "searchUserByName(\"xyz\") -> [] (khong tim thay)\n"
-            "searchUserByName(\"\") -> tat ca user (empty string la substring cua moi string)\n"
+            "searchUserByName(\"\") -> string rong, thong bao yeu cau nhap lai va thoat chuc nang 8\n"
             "Kiem tra: case-insensitive dung, substring match dung.\n"
         ))
 
@@ -676,12 +688,15 @@ def generate_testcases():
         edges=hub_edges,
         expected=(
             "TC32: Nhanh sao khong lo (1 trung tam + 999 nhanh)\n"
-            "Nguoi dung 1 co 999 ban truc tiep -> suggestFriends(1) = []\n"
+            "Nguoi dung 1 co 999 ban truc tiep -> suggestFriends(1, N) = [] voi moi N\n"
+            "  (tat ca user deu la ban truc tiep, khong co FoF de goi y)\n"
             "Nguoi dung 2 co ban truc tiep: {1 (hub), 3 (canh 2-3)}\n"
-            "suggestFriends(2) tra ve 997 goi y (nhanh 4-1000 qua hub)\n"
-            "  - User 3 KHONG nam trong goi y vi 3 da la ban truc tiep cua 2\n"
-            "  - Moi nhanh (4-1000) co mutualCount=1 (qua hub)\n"
-            "Kiem tra hieu suat voi node bac cao.\n"
+            "suggestFriends(2, 1000) tra ve 997 goi y (nhanh 4-1000 qua hub 1)\n"
+            "  - User 1 (hub) KHONG nam trong goi y vi la ban truc tiep cua 2\n"
+            "  - User 3 KHONG nam trong goi y vi la ban truc tiep cua 2\n"
+            "  - Cac nhanh 4-1000 (tru 4 va 5 la ban truc tiep qua canh 4-5) co mutualCount=1 (qua hub)\n"
+            "  - Canh bo sung (4,5) va (6,7): user 4 va 6 co them 1 ban chung la user 5 va 7\n"
+            "Kiem tra hieu suat voi node bac cao (suggestFriends phai chay duoi vai giay).\n"
         ))
 
     # ── TC33: Stress memory — load, xoa het, load lai ────────────────────────
@@ -711,8 +726,13 @@ def generate_testcases():
         expected=(
             "TC34: Kiem tra measurePerformance\n"
             "Thao tac:\n"
-            "  1. measurePerformance(1) -> in thoi gian BFS, goi y, export (khong crash)\n"
-            "  2. measurePerformance(9999) -> xuat '[LOI] Nguoi dung 9999 khong ton tai!'\n"
+            "  1. measurePerformance(1) voi dataset nho (4 users):\n"
+            "     - levels[] = {50,200,500,1000,2000,4}; totalUsers=4 < 50\n"
+            "     - Chi chay moc N=4 (totalUsers), in 1 dong ket qua + '<-- toan bo'\n"
+            "     - In thoi gian BFS (us, avg) va Suggest (us, avg) cho cac user mau\n"
+            "     - Khong crash, ket qua thoi gian hop ly (< vai tram microsecond)\n"
+            "  2. measurePerformance(9999) -> in header xong xuat '[LOI] Nguoi dung 9999 khong ton tai!'\n"
+            "     -> return som, KHONG in bang ket qua\n"
             "Kiem tra: Ham chay binh thuong, khong crash, xuat ket qua hop ly.\n"
         ))
 
