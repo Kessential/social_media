@@ -1,5 +1,6 @@
 #include "SocialMedia.h"
 #include <chrono>
+#include <climits>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -764,15 +765,22 @@ bool SocialMedia::exportUserConnections(int userID,
 // ============================================================================
 
 void SocialMedia::measurePerformance(int testUserID) const {
-    std::cout << "\n=== DO HIEU SUAT THEO BO DU LIEU TANG DAN ===\n";
-    std::cout << std::string(60, '-') << "\n";
+    using namespace std::chrono;
+
+    std::cout << "\n";
+    std::cout << "============================================================\n";
+    std::cout << "           KET QUA DO HIEU SUAT (PERFORMANCE TEST)          \n";
+    std::cout << "============================================================\n";
+    std::cout << "  Bo du lieu: " << getUserCount() << " nguoi dung | "
+              << getEdgeCount() << " ket noi\n";
+    std::cout << "------------------------------------------------------------\n";
 
     if (!users.contains(testUserID)) {
         std::cerr << "[LOI] Nguoi dung " << testUserID << " khong ton tai!\n";
         return;
     }
 
-    // Thu thap danh sach toan bo user, sap xep theo ID
+    // Thu thap va sap xep toan bo user ID
     Vector<int> allUsers;
     users.forEach([&](const int& uid, const std::string&) {
         allUsers.push_back(uid);
@@ -780,74 +788,67 @@ void SocialMedia::measurePerformance(int testUserID) const {
     Sort::sort(allUsers);
 
     int totalUsers = static_cast<int>(allUsers.size());
+    int sampleCount = std::min(totalUsers, 20);
 
-    // Cac moc kich thuoc benchmark
-    int levels[] = {50, 200, 500, 1000, 2000, totalUsers};
-    int numLevels = static_cast<int>(sizeof(levels) / sizeof(levels[0]));
+    // Header bang chi tiet
+    std::cout << "  " << std::left
+              << std::setw(12) << "User ID"
+              << std::setw(12) << "So ban"
+              << std::setw(18) << "BFS (us)"
+              << "Suggest (us)\n";
+    std::cout << "  " << std::string(54, '-') << "\n";
 
-    // Header bang ket qua
-    std::cout << std::left
-              << std::setw(12) << "N (users)"
-              << std::setw(20) << "BFS (us, avg)"
-              << std::setw(20) << "Suggest (us, avg)"
-              << "Ghi chu\n";
-    std::cout << std::string(60, '-') << "\n";
+    long long bfsMin = LLONG_MAX, bfsMax = 0, bfsSum = 0;
+    long long sugMin = LLONG_MAX, sugMax = 0, sugSum = 0;
 
-    for (int lv = 0; lv < numLevels; ++lv) {
-        int N = levels[lv];
-        if (N > totalUsers) N = totalUsers;
+    for (int i = 0; i < sampleCount; ++i) {
+        int idx = (totalUsers / sampleCount) * i;
+        int uid = allUsers[idx];
+        int deg = adjList.contains(uid)
+                      ? static_cast<int>(adjList.get(uid).size()) : 0;
 
-        // Tranh lap lai cung moc
-        if (lv > 0 && N == levels[lv - 1]) continue;
+        // Do BFS (getFriendsOfFriends)
+        auto t0 = high_resolution_clock::now();
+        getFriendsOfFriends(uid);
+        auto t1 = high_resolution_clock::now();
+        long long bfsUs = duration_cast<microseconds>(t1 - t0).count();
 
-        // Lay tap con N user dau tien lam mau do
-        // Chon user o vi tri giua lam testUser cho moc nay
-        int sampleSize = std::min(N, 10); // do toi da 10 user trong tap
-        long long bfsTotalUs = 0, suggestTotalUs = 0;
-        int measured = 0;
+        // Do Suggest (suggestFriends)
+        auto t2 = high_resolution_clock::now();
+        suggestFriends(uid, 10);
+        auto t3 = high_resolution_clock::now();
+        long long sugUs = duration_cast<microseconds>(t3 - t2).count();
 
-        for (int i = 0; i < sampleSize; ++i) {
-            int idx = (N / sampleSize) * i; // phan bo deu trong N user dau
-            if (idx >= totalUsers) break;
-            int uid = allUsers[idx];
+        bfsSum += bfsUs;
+        sugSum += sugUs;
+        if (bfsUs < bfsMin) bfsMin = bfsUs;
+        if (bfsUs > bfsMax) bfsMax = bfsUs;
+        if (sugUs < sugMin) sugMin = sugUs;
+        if (sugUs > sugMax) sugMax = sugUs;
 
-            // BFS
-            {
-                auto t0 = std::chrono::high_resolution_clock::now();
-                getFriendsOfFriends(uid);
-                auto t1 = std::chrono::high_resolution_clock::now();
-                bfsTotalUs += std::chrono::duration_cast<
-                    std::chrono::microseconds>(t1 - t0).count();
-            }
-            // Suggest
-            {
-                auto t0 = std::chrono::high_resolution_clock::now();
-                suggestFriends(uid, 10);
-                auto t1 = std::chrono::high_resolution_clock::now();
-                suggestTotalUs += std::chrono::duration_cast<
-                    std::chrono::microseconds>(t1 - t0).count();
-            }
-            ++measured;
-        }
-
-        long long bfsAvg     = measured > 0 ? bfsTotalUs     / measured : 0;
-        long long suggestAvg = measured > 0 ? suggestTotalUs / measured : 0;
-        std::string note = (N == totalUsers) ? "<-- toan bo" : "";
-
-        std::cout << std::left
-                  << std::setw(12) << N
-                  << std::setw(20) << bfsAvg
-                  << std::setw(20) << suggestAvg
-                  << note << "\n";
-
-        if (N == totalUsers) break;
+        std::cout << "  " << std::left
+                  << std::setw(12) << uid
+                  << std::setw(12) << deg
+                  << std::setw(18) << bfsUs
+                  << sugUs << "\n";
     }
 
-    std::cout << std::string(60, '-') << "\n";
-    std::cout << "Tong so nguoi dung trong he thong: " << totalUsers
-              << " | Tong so ket noi: " << getEdgeCount() << "\n";
-    std::cout << "Luu y: moi moc N do trung binh tren " 
-              << std::min(10, totalUsers) << " user mau.\n";
+    // Thong ke tong hop
+    long long bfsAvg = sampleCount > 0 ? bfsSum / sampleCount : 0;
+    long long sugAvg = sampleCount > 0 ? sugSum / sampleCount : 0;
+
+    std::cout << "  " << std::string(54, '-') << "\n";
+    std::cout << "  " << std::left << std::setw(24) << "Min:"
+              << std::setw(18) << bfsMin << sugMin << "\n";
+    std::cout << "  " << std::left << std::setw(24) << "Trung binh (avg):"
+              << std::setw(18) << bfsAvg << sugAvg << "\n";
+    std::cout << "  " << std::left << std::setw(24) << "Max:"
+              << std::setw(18) << bfsMax << sugMax << "\n";
+    std::cout << "============================================================\n";
+    std::cout << "  Don vi: us (microsecond) | 1 ms = 1000 us\n";
+    std::cout << "  So user mau: " << sampleCount
+              << " (phan bo deu trong " << totalUsers << " user)\n";
+    std::cout << "============================================================\n";
 }
 
 
