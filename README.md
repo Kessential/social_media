@@ -18,7 +18,7 @@ social_media/
 └── src/
     ├── main.cpp              # Entry point, menu tương tác 14 chức năng
     ├── SocialMedia.h         # Khai báo class SocialMedia, struct BFSNode, FriendSuggestion, GraphStats
-    ├── SocialMedia.cpp       # Toàn bộ logic nghiệp vụ (~1063 dòng)
+    ├── SocialMedia.cpp       # Toàn bộ logic nghiệp vụ
     ├── CustomHashMap.h       # HashMap tự cài (separate chaining, auto-rehash)
     ├── CustomHashSet.h       # HashSet tự cài (wrapper trên HashMap)
     ├── CustomVector.h        # Vector tự cài (dynamic array)
@@ -246,7 +246,7 @@ Dự án cung cấp sẵn một số script Python để tự động hóa việ
 
 ### 1. `generate_dataset.py` - Sinh dữ liệu và Test cases
 Script này thực hiện 2 nhiệm vụ chính:
-- Sinh ra bộ dữ liệu đồ thị mạng xã hội (Scale-free network) quy mô vừa gồm khoảng **10,500 người dùng** (`users.csv`) và **~100,000 kết nối** (`edges.txt`).
+- Sinh ra bộ dữ liệu đồ thị mạng xã hội (Scale-free network) quy mô vừa gồm khoảng **10,500 người dùng** (`users.csv`) và **~166,000 kết nối** (`edges.txt`).
 - Tự động sinh ra 34 thư mục kịch bản kiểm thử (test cases) để test các tình huống ngoại lệ.
 
 **Cách chạy:**
@@ -306,7 +306,7 @@ python scripts/generate_dataset.py
 | TC31 | `export_functions` | Kiểm tra export gợi ý / thống kê / thông tin user |
 | TC32 | `large_star_hub` | Hub lớn với 999 nhánh (stress test kết nối) |
 | TC33 | `stress_memory` | Stress test bộ nhớ với dataset lớn |
-| TC34 | `measure_performance` | Dataset benchmark đa dạng bậc cho `measurePerformance()` |
+| TC34 | `measure_performance` | Test chức năng hàm `measurePerformance()` |
 
 </details>
 
@@ -512,12 +512,12 @@ Nguoi dung co lap:     12
 | Thao tác | Trung bình | Tệ nhất |
 |----------|-----------|---------| 
 | `addUser` / `addConnection` | O(1) amortized | O(n) |
-| `removeUser` | O(deg(u)) | O(n) |
+| `removeUser` | O(deg(u)) | O(deg(u) × n) |
 | `getFriendsOfFriends` BFS depth-2 | O(deg(u) × avg\_deg) | O(E) |
-| `suggestFriends` | O(deg(u) × avg\_deg + k log k) | O(E + n log n) |
-| `searchUserByName` | O(n × \|keyword\|) | O(n × L) |
-| `computeGraphStats` | O(n) | O(n) |
+| `suggestFriends` | O(deg(u) × avg\_deg + F log F) | O(E + n log n) |
+| `searchUserByName` | O(n × L) | O(n × L × \\|keyword\\|) |
+| `computeGraphStats` | O(n) | O(n²) |
 | `HashMap get/put/contains` | O(1) amortized | O(n) |
 | `Sort::sort` | O(n log n) | O(n²) |
 
-> n = số người dùng, E = số cạnh, deg(u) = bậc của user u, L = độ dài tên trung bình, k = số ứng viên gợi ý
+> n = số người dùng, E = số cạnh, deg(u) = bậc của user u, L = độ dài tên trung bình, F = tổng số bạn chung (ứng viên gợi ý)
