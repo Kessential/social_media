@@ -11,20 +11,24 @@ Script tao do thi mo phong mang xa hoi thuc te:
   - Mot so luong nho cac nguoi dung "influencer" (hub) co rat nhieu ket noi
 
 Cach dung:
-    python generate_dataset.py
+    python scripts/generate_dataset.py
 """
 
 import random
 import os
 
 # ─── Cau hinh ──────────────────────────────────────────────────────────────
-NUM_USERS = 10_500                # Tong so nguoi dung
-NUM_COMMUNITIES = 50              # So luong cum cong dong
-INTRA_COMMUNITY_EDGES = 80_000    # Canh trong noi bo cong dong (day dac)
-INTER_COMMUNITY_EDGES = 20_000    # Canh noi giua cac cong dong (cau noi thua thot)
-HUB_COUNT = 100                   # So luong nguoi dung "nhom trung tam / influencer"
-HUB_EXTRA_EDGES = 15_000          # Canh bo sung gan voi cac hub
-SEED = 42                         # Hat giong de tai tao ngau nhien giong nhau
+NUM_USERS             = 10_500   # Tong so nguoi dung
+NUM_ISOLATED          = 100      # Nguoi dung co lap (degree = 0, Isolated group)
+NUM_PERIPHERAL        = 300      # Nguoi dung ngoai bien (degree = 1-3, Low group)
+NUM_COMMUNITIES       = 50       # So luong cum cong dong
+INTRA_COMMUNITY_EDGES = 100_000  # Canh trong noi bo cong dong (day dac, Medium group)
+INTER_COMMUNITY_EDGES = 50_000   # Canh noi giua cac cong dong
+HUB_COUNT             = 195      # Hub thuong (High group, degree ~100-999)
+HUB_EXTRA_EDGES       = 15_000   # Canh bo sung cho hub thuong
+SUPER_HUB_COUNT       = 5        # Sieu hub (Hub group, degree 1000+)
+SUPER_HUB_EDGES       = 5_000    # Canh bo sung cho sieu hub (~1000 moi hub)
+SEED = 42                        # Hat giong de tai tao ngau nhien giong nhau
 
 OUTPUT_DIR = os.path.dirname(os.path.abspath(__file__))
 USERS_FILE = os.path.join(OUTPUT_DIR, "users.csv")
@@ -85,54 +89,70 @@ def main():
     rng = random.Random(SEED)
 
     # ── 1. Tao nguoi dung ───────────────────────────────────────────────────────
-    print(f"[1/4] Dang tao {NUM_USERS} nguoi dung...")
+    print(f"[1/5] Dang tao {NUM_USERS} nguoi dung...")
     users: dict[int, str] = {}
     for uid in range(1, NUM_USERS + 1):
         users[uid] = generate_name(rng)
 
-    # ── 2. Phan chia nguoi dung vao cac cum cong dong ──────────────────────────
-    print(f"[2/4] Dang phan chia thanh {NUM_COMMUNITIES} cum cong dong...")
-    user_ids = list(range(1, NUM_USERS + 1))
-    rng.shuffle(user_ids)
+    # ── 2. Phan loai nguoi dung vao cac nhom ────────────────────────────────────
+    print(f"[2/5] Phan loai: {NUM_ISOLATED} isolated, {NUM_PERIPHERAL} peripheral, "
+          f"{SUPER_HUB_COUNT} sieu hub, {HUB_COUNT} hub thuong...")
+    all_ids = list(range(1, NUM_USERS + 1))
+    rng.shuffle(all_ids)
 
+    isolated_ids   = set(all_ids[:NUM_ISOLATED])                              # degree = 0
+    peripheral_ids = all_ids[NUM_ISOLATED : NUM_ISOLATED + NUM_PERIPHERAL]   # degree 1-3
+    community_ids  = all_ids[NUM_ISOLATED + NUM_PERIPHERAL:]                 # tham gia cum
+
+    # ── 3. Phan chia community users vao cac cum cong dong ──────────────────────
+    print(f"[3/5] Phan chia {len(community_ids)} nguoi dung vao {NUM_COMMUNITIES} cum...")
     communities: list[list[int]] = [[] for _ in range(NUM_COMMUNITIES)]
-    for i, uid in enumerate(user_ids):
+    for i, uid in enumerate(community_ids):
         communities[i % NUM_COMMUNITIES].append(uid)
 
-    # ── 3. Tao cac canh ket noi ───────────────────────────────────────────────────────
+    # ── 4. Tao cac canh ket noi ─────────────────────────────────────────────────
     edges: set[tuple[int, int]] = set()
 
     def add_edge(u: int, v: int):
         if u != v:
-            edge = (min(u, v), max(u, v))
-            edges.add(edge)
+            edges.add((min(u, v), max(u, v)))
 
-    # 3a. Canh noi bo cum cong dong (ket noi day dac trong nhom)
-    print(f"[3/4] Dang tao cac ket noi ({INTRA_COMMUNITY_EDGES} noi bo + "
-          f"{INTER_COMMUNITY_EDGES} lien cum + {HUB_EXTRA_EDGES} sieu ket noi)...")
+    print(f"[4/5] Tao canh ({INTRA_COMMUNITY_EDGES} noi bo + {INTER_COMMUNITY_EDGES} lien cum "
+          f"+ {NUM_PERIPHERAL}x1-3 peripheral + {SUPER_HUB_EDGES} sieu hub + {HUB_EXTRA_EDGES} hub)...")
 
+    # 4a. Canh noi bo cum (Medium group)
     for _ in range(INTRA_COMMUNITY_EDGES):
         comm = rng.choice(communities)
         if len(comm) >= 2:
             u, v = rng.sample(comm, 2)
             add_edge(u, v)
 
-    # 3b. Canh lien cum cong dong (cau noi giua cac nhom)
+    # 4b. Canh lien cum
     for _ in range(INTER_COMMUNITY_EDGES):
         c1, c2 = rng.sample(range(NUM_COMMUNITIES), 2)
         u = rng.choice(communities[c1])
         v = rng.choice(communities[c2])
         add_edge(u, v)
 
-    # 3c. Canh sieu ket noi / influencer (luat luy thua)
-    hubs = rng.sample(user_ids, HUB_COUNT)
-    for _ in range(HUB_EXTRA_EDGES):
-        hub = rng.choice(hubs)
-        target = rng.randint(1, NUM_USERS)
-        add_edge(hub, target)
+    # 4c. Peripheral users (Low group): moi nguoi 1-3 ket noi toi community
+    for uid in peripheral_ids:
+        for _ in range(rng.randint(1, 3)):
+            add_edge(uid, rng.choice(community_ids))
 
-    # ── 4. Ghi cac file ket qua ───────────────────────────────────────────────────
-    print(f"[4/4] Dang ghi cac file ket qua... ({len(users)} users, {len(edges)} edges)")
+    # 4d. Sieu hub (Hub group 1000+): chon tu community_ids
+    hub_pool    = rng.sample(community_ids, SUPER_HUB_COUNT + HUB_COUNT)
+    super_hubs  = hub_pool[:SUPER_HUB_COUNT]
+    regular_hubs = hub_pool[SUPER_HUB_COUNT:]
+
+    for _ in range(SUPER_HUB_EDGES):
+        add_edge(rng.choice(super_hubs), rng.choice(community_ids))
+
+    # 4e. Hub thuong (High group 100-999)
+    for _ in range(HUB_EXTRA_EDGES):
+        add_edge(rng.choice(regular_hubs), rng.choice(community_ids))
+
+    # ── 5. Ghi cac file ket qua ─────────────────────────────────────────────────
+    print(f"[5/5] Ghi file... ({len(users)} users, {len(edges)} edges)")
 
     with open(USERS_FILE, "w", encoding="utf-8") as f:
         for uid in range(1, NUM_USERS + 1):
@@ -144,15 +164,18 @@ def main():
 
     # ── Tom tat ─────────────────────────────────────────────────────────────────
     total_edges = len(edges)
-    avg_degree = 2 * total_edges / NUM_USERS
-    print(f"\n{'='*50}")
+    avg_degree  = 2 * total_edges / NUM_USERS
+    print(f"\n{'='*55}")
     print(f"  Da tao bo du lieu thanh cong!")
-    print(f"  Nguoi dung:   {NUM_USERS:>10,}")
-    print(f"  Canh ket noi: {total_edges:>10,}")
-    print(f"  Bac trung binh: {avg_degree:>10.1f}")
-    print(f"  So cum:       {NUM_COMMUNITIES:>10}")
-    print(f"  Sieu ket noi: {HUB_COUNT:>10}")
-    print(f"{'='*50}")
+    print(f"  Tong nguoi dung:      {NUM_USERS:>10,}")
+    print(f"    Isolated  (deg=0):  {NUM_ISOLATED:>10,}")
+    print(f"    Peripheral(deg 1-3):{NUM_PERIPHERAL:>10,}")
+    print(f"    Sieu hub  (1000+):  {SUPER_HUB_COUNT:>10,}")
+    print(f"    Hub thuong(100-999):{HUB_COUNT:>10,}")
+    print(f"    Community (Medium): {len(community_ids)-SUPER_HUB_COUNT-HUB_COUNT:>10,}")
+    print(f"  Tong canh ket noi:    {total_edges:>10,}")
+    print(f"  Bac trung binh:       {avg_degree:>10.1f}")
+    print(f"{'='*55}")
     print(f"  -> {USERS_FILE}")
     print(f"  -> {EDGES_FILE}")
 
@@ -720,21 +743,113 @@ def generate_testcases():
         ))
 
     # ── TC34: measurePerformance ──────────────────────────────────────────────
+    # Dataset du de xuat hien nhieu nhom degree
+    # - User 1 (hub): ket noi voi 2..21 -> degree 20 (Medium)
+    # - User 2..11 (low): ket noi voi 1 + 1 ban khac -> degree 2 (Low)
+    # - User 12..21 (isolated-ish): chi ket noi voi hub -> degree 1 (Low)
+    # - User 22 (isolated): khong co canh nao -> degree 0 (Isolated)
+    tc34_users = {1: "Hub"}
+    tc34_edges = []
+    for i in range(2, 12):
+        tc34_users[i] = f"LowUser_{i}"
+        tc34_edges.append((1, i))
+        if i + 10 <= 21:
+            tc34_edges.append((i, i + 10))
+    for i in range(12, 22):
+        tc34_users[i] = f"LeafUser_{i}"
+        tc34_edges.append((1, i))
+    tc34_users[22] = "Isolated"
+
     write_testcase("tc34_measure_performance",
-        users={1: "An", 2: "Binh", 3: "Chi", 4: "Dung"},
-        edges=[(1,2),(2,3),(3,4),(1,3)],
+        users=tc34_users,
+        edges=tc34_edges,
         expected=(
-            "TC34: Kiem tra measurePerformance\n"
-            "Thao tac:\n"
-            "  1. measurePerformance(1) voi dataset nho (4 users):\n"
-            "     - levels[] = {50,200,500,1000,2000,4}; totalUsers=4 < 50\n"
-            "     - Chi chay moc N=4 (totalUsers), in 1 dong ket qua + '<-- toan bo'\n"
-            "     - In thoi gian BFS (us, avg) va Suggest (us, avg) cho cac user mau\n"
-            "     - Khong crash, ket qua thoi gian hop ly (< vai tram microsecond)\n"
-            "  2. measurePerformance(9999) -> in header xong xuat '[LOI] Nguoi dung 9999 khong ton tai!'\n"
-            "     -> return som, KHONG in bang ket qua\n"
-            "Kiem tra: Ham chay binh thuong, khong crash, xuat ket qua hop ly.\n"
+            "TC34: Kiem tra measurePerformance() (khong tham so)\n"
+            "Dataset: 22 nguoi dung, hub co degree=20 (Medium), leaf co degree=1-2 (Low), 1 user co lap (Isolated).\n"
+            "\n"
+            "Hanh vi mong doi:\n"
+            "  [Khoi dong]\n"
+            "    - In header: so nguoi dung, so ket noi, thong so warm-up/repeat\n"
+            "    - Phan loai tat ca user vao 5 nhom:\n"
+            "        Isolated(=0): user 22\n"
+            "        Low(1-9)    : cac leaf user\n"
+            "        Medium(10-99): user 1 (hub)\n"
+            "        High(100-999): (khong co mau) -> in '(khong co mau)'\n"
+            "        Hub(1000+)  : (khong co mau) -> in '(khong co mau)'\n"
+            "\n"
+            "  [1. BFS - getFriendsOfFriends]\n"
+            "    - Moi nhom co mau: warm-up 3 lan, do 10 lan, lay median\n"
+            "    - In bang cot: Nhom | Mau | Min(us) | Avg(us) | Max(us)\n"
+            "    - Nhom High va Hub in '(khong co mau)'\n"
+            "    - Cuoi bang in Throughput (ops/sec)\n"
+            "\n"
+            "  [2. SUGGEST FRIENDS - suggestFriends(k=10)]\n"
+            "    - Tuong tu bang BFS tren\n"
+            "\n"
+            "  [3. SEARCH BY NAME]\n"
+            "    - Tu trich keyword tu ten user thuc trong dataset\n"
+            "    - 4 truong hop: High-match (1 ky tu), Medium-match (3 ky tu),\n"
+            "                   Low-match (4 ky tu con lai), No-match ('ZZZNOTEXIST999')\n"
+            "    - Moi truong hop: warm-up ben trong measureRepeated + do 10 lan + lay median\n"
+            "    - In bang cot: Nhom | Keyword | Min(us) | Med(us) | Max(us) | Ket qua\n"
+            "\n"
+            "  [4. GRAPH STATS - computeGraphStats]\n"
+            "    - Warm-up ben trong measureRepeated + do 10 lan + lay median\n"
+            "    - In 1 dong: Min: X us | Med: Y us | Max: Z us\n"
+            "\n"
+            "  [Tong ket]\n"
+            "    - In don vi (microsecond), phuong phap, phan nhom\n"
+            "\n"
+            "Kiem tra:\n"
+            "  - Khong crash voi bat ky nhom nao (ke ca nhom rong)\n"
+            "  - Thoi gian ket qua hop ly (< vai chuc ms voi dataset nho)\n"
+            "  - Nhom High va Hub hien thi '(khong co mau)', khong bi bo qua hoac crash\n"
         ))
+
+    # ── TC35: expected.txt cho bo dataset chinh (scripts/) ──────────────────────
+    # Dataset chinh (users.csv + edges.txt) DA nam trong OUTPUT_DIR roi.
+    # Chi can ghi expected.txt vao cung thu muc la xong, khong can sao chep.
+    EXPECTED_FILE = os.path.join(OUTPUT_DIR, "expected.txt")
+    with open(EXPECTED_FILE, "w", encoding="utf-8") as f:
+        f.write(
+            "TC35: Benchmark measurePerformance() tren bo dataset chinh (10,500 users)\n"
+            "Dataset co cau truc ro rang bao phu tat ca 5 nhom degree:\n"
+            "  - 100  isolated users   -> Isolated (degree = 0)\n"
+            "  - 300  peripheral users -> Low      (degree = 1-3)\n"
+            "  - ~9,600 community users -> Medium  (degree ~20-50)\n"
+            "  - 195  hub thuong       -> High     (degree ~100-200)\n"
+            "  - 5    sieu hub         -> Hub      (degree ~1030+)\n"
+            "  Tong canh thuc te: 165,506\n"
+            "\n"
+            "Phan loai nhom degree mong doi:\n"
+            "  Isolated(=0)  : 100 users (dat rieng, KHONG tham gia cum)\n"
+            "  Low(1-9)      : 300 peripheral users (1-3 ket noi tuong minh)\n"
+            "  Medium(10-99) : phan lon community users (~9,600 users)\n"
+            "  High(100-999) : 195 hub thuong (HUB_EXTRA_EDGES = 15,000)\n"
+            "  Hub(1000+)    : 5 sieu hub (SUPER_HUB_EDGES = 5,000 ~ 1000/hub)\n"
+            "  -> Tat ca 5 nhom deu co du lieu, khong nhom nao bi '(khong co mau)'\n"
+            "\n"
+            "Hanh vi mong doi cho tung section:\n"
+            "  [1. BFS - getFriendsOfFriends]\n"
+            "     Isolated: tra ve ngay (0 ban), gan 0 us\n"
+            "     Low:      BFS qua 1-3 ban, rat nhanh\n"
+            "     Hub(1000+): BFS qua 1000+ ban depth-2, chay lau nhat\n"
+            "     Thu tu: Isolated < Low < Medium < High < Hub\n"
+            "  [2. SUGGEST FRIENDS - suggestFriends(k=10)]\n"
+            "     Tuong tu BFS, them buoc sap xep ban chung -> cham hon mot chut\n"
+            "  [3. SEARCH BY NAME]\n"
+            "     High-match (1 ky tu): ket qua nhieu nhat (~3000-5000 matches)\n"
+            "     No-match: scan nhanh nhat (output rong)\n"
+            "  [4. GRAPH STATS]\n"
+            "     O(V+E) ~ O(10500 + 165500): du kien < 10ms\n"
+            "\n"
+            "Kiem tra:\n"
+            "  - Tat ca 5 nhom deu co so lieu (khong co dong '(khong co mau)')\n"
+            "  - Isolated group: Min/Avg/Max gan 0 us\n"
+            "  - Hub group: thoi gian cao nhat, nhung khong crash\n"
+            "  - Throughput hop ly (khong am, khong tran so)\n"
+        )
+    print(f"  [OK] {'expected.txt cho dataset chinh (scripts/)':40s}| 10500 nguoi dung | 165506 ket noi")
 
     print("=" * 60)
     print(f"  Tat ca test case duoc ghi vao: {os.path.join(OUTPUT_DIR, 'testcases')}")

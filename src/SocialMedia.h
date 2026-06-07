@@ -71,7 +71,7 @@ public:
   bool exportUserConnections(int userID, const std::string &filepath) const;
 
   // === Đo hiệu suất ===
-  void measurePerformance(int testUserID) const;
+  void measurePerformance() const;
 
   // === Helpers ===
   bool userExists(int userID) const;

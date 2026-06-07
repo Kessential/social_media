@@ -7,16 +7,18 @@
 ## Cấu trúc thư mục
 
 ```
-FS/
+social_media/
 ├── Makefile
 ├── README.md
 ├── scripts/
-│   ├── generate_dataset.py   # Sinh dữ liệu 10,500+ người dùng & 31 test cases
-│   └── printpath.py
+│   ├── generate_dataset.py   # Sinh dữ liệu 10,500+ người dùng & 34 test cases
+│   ├── printpath.py          # Tiện ích in đường dẫn
+│   ├── run_tests.py          # Chạy toàn bộ test cases tự động
+│   └── run_tc33.py           # Chạy riêng TC33 (stress test bộ nhớ)
 └── src/
     ├── main.cpp              # Entry point, menu tương tác 14 chức năng
     ├── SocialMedia.h         # Khai báo class SocialMedia, struct BFSNode, FriendSuggestion, GraphStats
-    ├── SocialMedia.cpp       # Toàn bộ logic nghiệp vụ (~764 dòng)
+    ├── SocialMedia.cpp       # Toàn bộ logic nghiệp vụ (~1063 dòng)
     ├── CustomHashMap.h       # HashMap tự cài (separate chaining, auto-rehash)
     ├── CustomHashSet.h       # HashSet tự cài (wrapper trên HashMap)
     ├── CustomVector.h        # Vector tự cài (dynamic array)
@@ -35,15 +37,15 @@ FS/
 | 3 | Thêm kết nối | Thêm cạnh vô hướng giữa hai user |
 | 4 | Xóa người dùng | Xóa user và tự động xóa toàn bộ kết nối liên quan |
 | 5 | Xóa kết nối | Xóa cạnh giữa hai user |
-| 6 | Hiển thị danh sách người dùng | Phân trang 50/trang, sắp xếp theo ID tăng dần, hiển thị số bạn bè |
-| 7 | Xem thông tin người dùng | ID, tên, danh sách bạn bè sắp xếp theo ID |
-| 8 | Tìm kiếm theo tên | Không phân biệt hoa/thường, tìm substring |
-| 9 | Xem bạn bè trực tiếp | Danh sách bạn bậc 1 kèm tên |
-| 10 | Tìm bạn của bạn (BFS) | BFS độ sâu 2, phân trang 50/trang, điều hướng [n]/[p]/[Enter] |
+| 6 | Hiển thị danh sách người dùng | Phân trang 20/trang, sắp xếp theo ID tăng dần, hiển thị số bạn bè |
+| 7 | Xem thông tin người dùng | ID, tên, danh sách bạn bè phân trang sắp xếp theo ID |
+| 8 | Tìm kiếm theo tên | Không phân biệt hoa/thường, tìm substring; nhập ID để xem chi tiết |
+| 9 | Xem bạn bè trực tiếp | Danh sách bạn bậc 1 kèm tên, phân trang 20/trang |
+| 10 | Tìm bạn của bạn (BFS) | BFS độ sâu 2, phân trang 20/trang, điều hướng [n]/[p]/[Enter] |
 | 11 | Gợi ý kết bạn | Sắp xếp giảm dần theo số bạn chung (tie-breaker: ID tăng dần), phân trang, hiển thị tối đa 3 bạn chung |
 | 12 | Thống kê đồ thị | Tổng user/cạnh, bậc TB, **tất cả** user nhiều/ít bạn nhất, user cô lập |
 | 13 | Export ra file | Export gợi ý / thống kê / thông tin user ra file `.txt` |
-| 14 | Đo hiệu suất | Benchmark BFS, gợi ý kết bạn và export (đơn vị microsecond) |
+| 14 | Đo hiệu suất | Benchmark tự động 4 thuật toán theo nhóm bậc, warm-up + median của 10 lần đo |
 
 ---
 
@@ -154,6 +156,27 @@ Khi in ra màn hình (`printSuggestions`): mỗi gợi ý hiển thị tối đa
 - Cập nhật `maxDegreeUsers` / `minDegreeUsers` theo dạng **Vector** để giữ tất cả user cùng bậc cực trị
 - `getEdgeCount()`: tổng kích thước `adjList` / 2 (mỗi cạnh đếm 2 lần do vô hướng)
 
+### Đo hiệu suất — `measurePerformance()`
+
+Benchmark **tự động** (không cần nhập User ID), phân loại toàn bộ user thành 5 nhóm theo số bạn (bậc đồ thị):
+
+| Nhóm | Bậc |
+|------|-----|
+| Isolated | = 0 |
+| Low | 1 – 9 |
+| Medium | 10 – 99 |
+| High | 100 – 999 |
+| Hub | ≥ 1000 |
+
+Với mỗi nhóm, lấy tối đa **10 mẫu** phân bố đều. Mỗi mẫu được đo **10 lần** sau **3 vòng warm-up**, kết quả báo cáo theo **median** (tránh nhiễu từ các đột biến thời gian).
+
+4 thuật toán được benchmark:
+
+1. **BFS** — `getFriendsOfFriends` (depth = 2): báo cáo Min/Avg(median)/Max theo nhóm + throughput (ops/sec)
+2. **Suggest Friends** — `suggestFriends(k=10)`: cùng định dạng theo nhóm
+3. **Search by Name** — `searchUserByName`: 4 loại keyword (High-match / Medium-match / Low-match / No-match), báo cáo Min/Avg/Max + số kết quả tìm được
+4. **Graph Stats** — `computeGraphStats()`: báo cáo Min/Med/Max cho toàn bộ đồ thị
+
 ---
 
 ## Định dạng file dữ liệu
@@ -188,57 +211,144 @@ Ví dụ:
 
 ## Build & Chạy
 
-**Yêu cầu:** `g++` hỗ trợ C++17, `make`
+Dự án được thiết kế **cross-platform**, có thể biên dịch mượt mà trên Windows, Linux và macOS. Script `Makefile` sẽ tự động nhận diện hệ điều hành để đưa ra luồng build phù hợp.
+
+**Yêu cầu:** Trình biên dịch hỗ trợ **C++17** (như `g++`, `clang++`) và `make`.
 
 ```bash
 # Build
 make
 
-# Chạy (Windows)
-.\SocialMedia.exe
-
-# Chạy (Linux/macOS)
-./SocialMedia
-
-# Rebuild sạch
-make rebuild
-
-# Dọn build artifacts
+# Xóa các file thực thi và object files cũ
 make clean
+
+# Xóa sạch và biên dịch lại từ đầu
+make rebuild
 ```
 
-Output binary: `SocialMedia.exe` (Windows) / `SocialMedia` (Linux/macOS)  
-Object files: `build/*.o`
+**Cách chạy chương trình:**
+- **Trên Linux/macOS:**
+  ```bash
+  ./SocialMedia
+  ```
+- **Trên Windows (cmd/PowerShell):**
+  ```cmd
+  .\SocialMedia.exe
+  ```
+
+*Lưu ý: Khi chạy trên Windows, chương trình sẽ tự động thiết lập Console thành UTF-8 (`SetConsoleOutputCP(CP_UTF8)`) để hiển thị tốt mã Unicode.*
 
 ---
 
-## Sinh dữ liệu kiểm thử
+## Các Script hỗ trợ (Thư mục `scripts/`)
 
+Dự án cung cấp sẵn một số script Python để tự động hóa việc khởi tạo dữ liệu, kiểm thử toàn diện và đánh giá hiệu năng. Tất cả các script cần được chạy từ thư mục gốc của dự án.
+
+### 1. `generate_dataset.py` - Sinh dữ liệu và Test cases
+Script này thực hiện 2 nhiệm vụ chính:
+- Sinh ra bộ dữ liệu đồ thị mạng xã hội (Scale-free network) quy mô vừa gồm khoảng **10,500 người dùng** (`users.csv`) và **~100,000 kết nối** (`edges.txt`).
+- Tự động sinh ra 34 thư mục kịch bản kiểm thử (test cases) để test các tình huống ngoại lệ.
+
+**Cách chạy:**
 ```bash
 python scripts/generate_dataset.py
 ```
 
-Script tạo 2 file chính tại `scripts/`:
-- `users.csv` — **10,500 người dùng** (70% tên tiếng Việt, 30% tiếng Anh)
-- `edges.txt` — khoảng **~100,000+ cạnh kết nối**
+**Ví dụ Output:**
+```text
+[1/5] Dang tao 10500 nguoi dung...
+[5/5] Ghi file... (10500 users, 165506 edges)
+...
+=======================================================
+  Da tao bo du lieu thanh cong!
+  Tong nguoi dung:          10,500
+  ...
+  Tong canh ket noi:       165,506
+=======================================================
+...
+```
 
-Mô hình đồ thị mô phỏng mạng xã hội thực tế (scale-free):
-- **50 cộng đồng** với 80,000 cạnh nội bộ dày đặc (intra-community)
-- **20,000 cạnh inter-community** làm cầu nối giữa các cộng đồng
-- **100 node "influencer/hub"** với 15,000 cạnh siêu kết nối (phân phối lũy thừa)
+<details>
+<summary><b>Danh sách 34 Test Cases được sinh ra (bấm để xem chi tiết)</b></summary>
 
-### 31 Test Cases
+| # | Tên | Mô tả |
+|---|-----|-------|
+| TC01 | `connection_nonexistent` | Thêm kết nối khi một trong hai user không tồn tại |
+| TC02 | `duplicate_user_id` | File CSV có ID trùng lặp |
+| TC03 | `remove_nonexistent_user` | Xóa user không tồn tại |
+| TC04 | `remove_nonexistent_connection` | Xóa kết nối không tồn tại |
+| TC05 | `remove_connection_bfs` | Xóa kết nối rồi kiểm tra lại BFS |
+| TC06 | `add_remove_symmetry` | Kiểm tra tính đối xứng của adjList sau thêm/xóa |
+| TC07 | `add_after_load` | Thêm user/kết nối sau khi tải file |
+| TC08 | `file_not_found` | File đầu vào không tồn tại |
+| TC09 | `blank_lines_whitespace` | File có dòng trống và khoảng trắng thừa |
+| TC10 | `malformed_csv` | File CSV sai định dạng |
+| TC11 | `special_chars_name` | Tên chứa ký tự đặc biệt (dấu phẩy, Unicode) |
+| TC12 | `malformed_edges` | File edges sai định dạng |
+| TC13 | `chain_graph` | Đồ thị dạng chuỗi (1–2–3–…–N) |
+| TC14 | `diamond_graph` | Đồ thị kim cương (2 bạn chung) |
+| TC15 | `cycle_graph` | Đồ thị vòng tròn |
+| TC16 | `triangle_with_tail` | Tam giác + đuôi |
+| TC17 | `bipartite_graph` | Đồ thị hai phía |
+| TC18 | `isolated_user` | User cô lập (không có kết nối) |
+| TC19 | `single_friend` | User chỉ có đúng 1 bạn |
+| TC20 | `complete_clique` | Đồ thị đầy đủ K-n (clique) |
+| TC21 | `star_graph` | Đồ thị sao (1 hub nối tất cả) |
+| TC22 | `disconnected_components` | Nhiều thành phần rời rạc |
+| TC23 | `max_suggestions_limit` | Kiểm tra giới hạn `maxSuggestions` |
+| TC24 | `extreme_user_ids` | ID cực hạn (0, âm, INT_MAX) |
+| TC25 | `single_user` | Chỉ có 1 user trong hệ thống |
+| TC26 | `two_users` | Chỉ có 2 user, không có kết nối |
+| TC27 | `empty_dataset` | Dataset rỗng |
+| TC28 | `self_loop_duplicate` | Tự kết nối và kết nối trùng lặp |
+| TC29 | `nonexistent_user` | Truy vấn user không tồn tại |
+| TC30 | `search_by_name` | Tìm kiếm theo tên (có/không có kết quả) |
+| TC31 | `export_functions` | Kiểm tra export gợi ý / thống kê / thông tin user |
+| TC32 | `large_star_hub` | Hub lớn với 999 nhánh (stress test kết nối) |
+| TC33 | `stress_memory` | Stress test bộ nhớ với dataset lớn |
+| TC34 | `measure_performance` | Dataset benchmark đa dạng bậc cho `measurePerformance()` |
 
-Script cũng sinh **31 test cases** vào `scripts/testcases/<tên>/`, mỗi thư mục gồm `users.csv`, `edges.txt`, `expected.txt`.
+</details>
 
-| Nhóm | Test cases | Mô tả |
-|------|-----------|-------|
-| Cấu trúc đồ thị | TC01–TC06, TC25 | User cô lập, clique K5, đồ thị sao, chuỗi, thành phần rời rạc, vòng tròn |
-| Biên & đặc biệt | TC07–TC09, TC23 | Tự kết nối, trùng cạnh, user duy nhất, ID cực hạn (0, âm, INT_MAX) |
-| Stress test | TC10, TC12, TC24 | Hub 999 nhánh, giới hạn `maxSuggestions`, `maxSuggestions=0` |
-| Xóa & cập nhật | TC18, TC19, TC31 | Xóa user rồi gợi ý, xóa kết nối rồi BFS, kiểm tra đối xứng adjList |
-| Xử lý lỗi input | TC14–TC17, TC20–TC22, TC27–TC30 | `maxSuggestions` âm, user không tồn tại, file không tìm thấy, CSV lỗi định dạng, tên có dấu phẩy |
-| Tính đúng đắn | TC11, TC13, TC26 | Tam giác + đuôi, đồ thị kim cương (2 bạn chung), gọi hàm khi không có kết nối |
+### 2. `run_tests.py` - Kiểm thử tự động (Auto-test)
+Tự động gọi file thực thi `./SocialMedia` (yêu cầu chạy lệnh `make` trước) và giả lập thao tác nhập liệu từ người dùng (qua `stdin`) để kiểm thử **toàn bộ 14 chức năng** của menu chính trên bộ dataset lớn.
+
+**Cách chạy:**
+```bash
+python scripts/run_tests.py
+```
+
+**Ví dụ Output:**
+```text
+════════════════════════════════════════════════════════════════════════
+  KIEM THU TU DONG – SOCIAL NETWORK BFS SIMULATION
+  ...
+════════════════════════════════════════════════════════════════════════
+  >> NHOM 1 – TAI DU LIEU (Menu 1)
+  --> PASS : 1a. Tai thanh cong dataset chinh
+...
+════════════════════════════════════════════════════════════════════════
+  KET QUA TONG HOP
+  PASS : 33/33
+  FAIL : 0/33
+  --> Toan bo test deu PASS! Chuong trinh hoat dong on dinh.
+```
+
+### 3. `run_tc33.py` - Stress test bộ nhớ (TC33)
+Script chuyên biệt để kiểm tra memory leak. Nó chạy vòng đời khắc nghiệt: Tải 50 người dùng $\rightarrow$ Xóa sạch 50 người dùng từng người một $\rightarrow$ Tải lại file từ đầu. Mục tiêu xem C++ có giải phóng bộ nhớ triệt để hay không.
+
+**Cách chạy:**
+```bash
+python scripts/run_tc33.py
+```
+
+### 4. `printpath.py` - Tiện ích xuất đường dẫn
+Quét thư mục `testcases/` và in ra tất cả các đường dẫn dạng text vào file `path.txt`. Phục vụ cho mục đích gõ đường dẫn tự động vào stdin cho các bài test nếu cần thiết.
+
+**Cách chạy:**
+```bash
+python scripts/printpath.py
+```
 
 ---
 
@@ -279,25 +389,69 @@ Script cũng sinh **31 test cases** vào `scripts/testcases/<tên>/`, mỗi thư
 ╚═════════════════════════════════════════════════╝
 ```
 
-**Tải dữ liệu và đo hiệu suất:**
+**Tải dữ liệu:**
 ```
-Chao mung ban den voi chuong trinh Mo phong Mang Xa Hoi!
-He thong su dung thuat toan BFS de tim ban cua ban va goi y ket ban.
-
 Lua chon cua ban: 1
 Nhap duong dan file users (vd: users.csv): scripts/users.csv
 Nhap duong dan file edges (vd: edges.txt): scripts/edges.txt
-[OK] Tai du lieu thanh cong: 10500 nguoi dung, 103247 ket noi.
+[OK] Tai du lieu thanh cong: 10500 nguoi dung, 165506 ket noi.
+```
 
+**Đo hiệu suất (Option 14):**
+```
 Lua chon cua ban: 14
-Nhap User ID de do hieu suat: 1
-=== DO HIEU SUAT — User ID: 1 ===
---------------------------------------------------
-BFS (ban cua ban):            312 us  | Ket qua: 847 nguoi
-Goi y ket ban (top 10):       198 us  | Ket qua: 10 goi y
-Export goi y (top 10):         45 us
---------------------------------------------------
-Tong so nguoi dung: 10500 | Tong so ket noi: 103247
+
+============================================================
+         KET QUA DO HIEU SUAT (PERFORMANCE TEST)
+============================================================
+  Bo du lieu: 10500 nguoi dung | 165506 ket noi
+  Warm-up: 3 vong | So lan lap do: 10 lan / mau
+============================================================
+
+  [1. BFS - getFriendsOfFriends (depth = 2)]
+  --------------------------------------------------------------
+  Nhom            Mau    Min(us)   Avg(us)   Max(us)
+  ----------------------------------------------------
+  Isolated (=0)   10     0         0         0
+  Low    (1-9)    10     2         9         35
+  Medium (10-99)  10     231       407       1031
+  High (100-999)  10     636       897       1223
+  Hub    (1000+)  1      2792      3223      4127
+  ----------------------------------------------------
+  Throughput: 2506 ops/sec
+
+  [2. SUGGEST FRIENDS - suggestFriends (k = 10)]
+  --------------------------------------------------------------
+  Nhom            Mau    Min(us)   Avg(us)   Max(us)
+  ----------------------------------------------------
+  Isolated (=0)   10     0         0         0
+  Low    (1-9)    10     5         20        57
+  Medium (10-99)  10     463       780       1923
+  High (100-999)  10     1394      1724      2409
+  Hub    (1000+)  1      7133      8011      9407
+  ----------------------------------------------------
+  Throughput: 1232 ops/sec
+
+  [3. SEARCH BY NAME (scan luon O(N), khac o kich thuoc output)]
+  --------------------------------------------------------------------
+  Nhom          Keyword         Min(us)   Avg(us)   Max(us)   Ket qua
+  --------------------------------------------------------------------
+  High-match    "N"             602       667       777       8999
+  Medium-match  "Hoa"           753       804       843       1138
+  Low-match     "nh T"          692       765       908       631
+  No-match      "ZZZNOTEXIST"   549       563       629       0
+  --------------------------------------------------------------------
+
+  [4. GRAPH STATS - computeGraphStats (O(V+E))]
+  ----------------------------------------
+  Min: 177 us  |  Med: 195 us  |  Max: 265 us
+  ----------------------------------------
+
+============================================================
+  Don vi: us (microsecond) | 1ms = 1000 us
+  Phuong phap: warm-up 3 vong, do 10 lan/mau, lay median
+  Phan nhom: Isolated(0) / Low(1-9) / Medium(10-99) / High(100-999) / Hub(1000+)
+============================================================
 ```
 
 **Thêm người dùng và kết nối:**
@@ -319,24 +473,7 @@ Lua chon cua ban: 8
 Nhap tu khoa tim kiem: nguyen
 [OK] Tim thay 312 nguoi dung phu hop voi tu khoa "nguyen":
 ...
-```
-
-**Phân trang (điều hướng):**
-```
-Phim tat: [n] Trang sau | [p] Trang truoc | [Enter] Ve menu chinh
-Lua chon cua ban: n
-[Thong bao] Day la trang cuoi. Nhan [p] de quay lai hoac [Enter] de thoat.
-```
-
-**Các thông báo lỗi / cảnh báo điển hình:**
-```
-[LOI] Nguoi dung voi ID 999 khong ton tai!
-[LOI] Mot trong hai User ID khong ton tai. Khong the xoa ket noi.
-[LOI] Gia tri khong hop le. Vui long nhap mot so nguyen.
-[LOI] Khong the mo file "data/missing.csv". Vui long kiem tra duong dan.
-[LOI] Khong the tao file "output/report.txt". Vui long kiem tra quyen ghi.
-[CANH BAO] Ket noi giua User ID 1 va User ID 2 da ton tai. Bo qua.
-[CANH BAO] Khong the tu ket noi toi chinh minh (User ID: 5).
+Chon hoac nhap ID nguoi dung de xem chi tiet: 5
 ```
 
 **Thống kê đồ thị (hỗ trợ nhiều user cùng bậc):**
@@ -357,17 +494,15 @@ Nguoi dung co lap:     12
 ----------------------------------------
 ```
 
-**Export kết quả:**
+**Các thông báo lỗi / cảnh báo điển hình:**
 ```
-Lua chon cua ban: 13
-╔═════════════════════════════════════════════════╗
-║               EXPORT KET QUA RA FILE            ║
-╠═════════════════════════════════════════════════╣
-║  1. Export danh sach goi y ket ban              ║
-║  2. Export bao cao thong ke do thi              ║
-║  3. Export chi tiet thong tin & ban be user     ║
-║  0. Quay lai menu chinh                         ║
-╚═════════════════════════════════════════════════╝
+[LOI] Nguoi dung voi ID 999 khong ton tai!
+[LOI] Mot trong hai User ID khong ton tai. Khong the xoa ket noi.
+[LOI] Gia tri khong hop le. Vui long nhap mot so nguyen.
+[LOI] Khong the mo file "data/missing.csv". Vui long kiem tra duong dan.
+[LOI] Khong the tao file "output/report.txt". Vui long kiem tra quyen ghi.
+[CANH BAO] Ket noi giua User ID 1 va User ID 2 da ton tai. Bo qua.
+[CANH BAO] Khong the tu ket noi toi chinh minh (User ID: 5).
 ```
 
 ---

@@ -1,0 +1,20 @@
+# Biên dịch & build artifacts
+SocialMedia
+SocialMedia.exe
+build/
+*.o
+*.obj
+
+# Bộ dữ liệu sinh tự động (generated datasets)
+scripts/users.csv
+scripts/edges.txt
+scripts/expected.txt
+scripts/testcases/
+
+# File báo cáo & kết quả xuất ra (export files)
+stats.txt
+suggestions.txt
+user_info.txt
+*_err.txt
+test_*.txt
+path.txt

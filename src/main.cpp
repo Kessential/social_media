@@ -451,8 +451,7 @@ int main() {
     }
 
     case 14: {
-      int id = readInt("Nhap User ID de do hieu suat: ");
-      network.measurePerformance(id);
+      network.measurePerformance();
       break;
     }
 

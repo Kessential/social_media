@@ -764,90 +764,275 @@ bool SocialMedia::exportUserConnections(int userID,
 // Đo hiệu suất
 // ============================================================================
 
-void SocialMedia::measurePerformance(int testUserID) const {
+void SocialMedia::measurePerformance() const {
     using namespace std::chrono;
+
+    // ----------------------------------------------------------------
+    // Kiem tra du lieu
+    // ----------------------------------------------------------------
+    int totalUsers = getUserCount();
+    int totalEdges = getEdgeCount();
 
     std::cout << "\n";
     std::cout << "============================================================\n";
-    std::cout << "           KET QUA DO HIEU SUAT (PERFORMANCE TEST)          \n";
+    std::cout << "         KET QUA DO HIEU SUAT (PERFORMANCE TEST)\n";
     std::cout << "============================================================\n";
-    std::cout << "  Bo du lieu: " << getUserCount() << " nguoi dung | "
-              << getEdgeCount() << " ket noi\n";
-    std::cout << "------------------------------------------------------------\n";
+    std::cout << "  Bo du lieu: " << totalUsers << " nguoi dung | "
+              << totalEdges << " ket noi\n";
+    std::cout << "  Warm-up: 3 vong | So lan lap do: 10 lan / mau\n";
+    std::cout << "============================================================\n";
 
-    if (!users.contains(testUserID)) {
-        std::cerr << "[LOI] Nguoi dung " << testUserID << " khong ton tai!\n";
+    if (totalUsers == 0) {
+        std::cerr << "[LOI] Chua co du lieu. Hay tai file truoc (Option 1).\n";
         return;
     }
 
-    // Thu thap va sap xep toan bo user ID
-    Vector<int> allUsers;
+    // ----------------------------------------------------------------
+    // Phan loai user theo degree
+    // ----------------------------------------------------------------
+    const int REPEAT    = 10;   // So lan lap do moi mau
+    const int WARMUP    = 3;    // So vong warm-up
+    const int PER_GROUP = 10;    // So mau toi da moi nhom
+
+    struct Group {
+        std::string name;
+        Vector<int> uids;
+    };
+    Group isolated, low, medium, high, hub;
+    isolated.name = "Isolated (=0)";
+    low.name      = "Low    (1-9) ";
+    medium.name   = "Medium (10-99)";
+    high.name     = "High (100-999)";
+    hub.name      = "Hub    (1000+)";
+
     users.forEach([&](const int& uid, const std::string&) {
-        allUsers.push_back(uid);
-    });
-    Sort::sort(allUsers);
-
-    int totalUsers = static_cast<int>(allUsers.size());
-    int sampleCount = std::min(totalUsers, 20);
-
-    // Header bang chi tiet
-    std::cout << "  " << std::left
-              << std::setw(12) << "User ID"
-              << std::setw(12) << "So ban"
-              << std::setw(18) << "BFS (us)"
-              << "Suggest (us)\n";
-    std::cout << "  " << std::string(54, '-') << "\n";
-
-    long long bfsMin = LLONG_MAX, bfsMax = 0, bfsSum = 0;
-    long long sugMin = LLONG_MAX, sugMax = 0, sugSum = 0;
-
-    for (int i = 0; i < sampleCount; ++i) {
-        int idx = (totalUsers / sampleCount) * i;
-        int uid = allUsers[idx];
         int deg = adjList.contains(uid)
-                      ? static_cast<int>(adjList.get(uid).size()) : 0;
+                  ? static_cast<int>(adjList.get(uid).size()) : 0;
+        if      (deg == 0)    isolated.uids.push_back(uid);
+        else if (deg < 10)    low.uids.push_back(uid);
+        else if (deg < 100)   medium.uids.push_back(uid);
+        else if (deg < 1000)  high.uids.push_back(uid);
+        else                  hub.uids.push_back(uid);
+    });
 
-        // Do BFS (getFriendsOfFriends)
-        auto t0 = high_resolution_clock::now();
-        getFriendsOfFriends(uid);
-        auto t1 = high_resolution_clock::now();
-        long long bfsUs = duration_cast<microseconds>(t1 - t0).count();
+    // Lay toi da PER_GROUP mau moi nhom (phan bo deu)
+    auto pickSamples = [&](Vector<int>& src) -> Vector<int> {
+        Vector<int> picked;
+        int n = static_cast<int>(src.size());
+        if (n == 0) return picked;
+        int step = std::max(1, n / PER_GROUP);
+        for (int i = 0; i < n && static_cast<int>(picked.size()) < PER_GROUP; i += step)
+            picked.push_back(src[i]);
+        return picked;
+    };
 
-        // Do Suggest (suggestFriends)
-        auto t2 = high_resolution_clock::now();
-        suggestFriends(uid, 10);
-        auto t3 = high_resolution_clock::now();
-        long long sugUs = duration_cast<microseconds>(t3 - t2).count();
+    // ----------------------------------------------------------------
+    // Ham tien ich: do nhieu lan, tra ve danh sach thoi gian (us)
+    // ----------------------------------------------------------------
+    auto measureRepeated = [&](std::function<void()> fn) -> Vector<long long> {
+        // Warm-up
+        for (int w = 0; w < WARMUP; ++w) fn();
+        // Do that
+        Vector<long long> times;
+        for (int r = 0; r < REPEAT; ++r) {
+            auto t0 = high_resolution_clock::now();
+            fn();
+            auto t1 = high_resolution_clock::now();
+            times.push_back(duration_cast<microseconds>(t1 - t0).count());
+        }
+        return times;
+    };
 
-        bfsSum += bfsUs;
-        sugSum += sugUs;
-        if (bfsUs < bfsMin) bfsMin = bfsUs;
-        if (bfsUs > bfsMax) bfsMax = bfsUs;
-        if (sugUs < sugMin) sugMin = sugUs;
-        if (sugUs > sugMax) sugMax = sugUs;
+    // Ham tinh median tu vector da sap xep
+    auto median = [](Vector<long long> v) -> long long {
+        if (v.empty()) return 0;
+        Sort::sort(v);
+        size_t n = v.size();
+        return (n % 2 == 0) ? (v[n/2 - 1] + v[n/2]) / 2 : v[n/2];
+    };
 
+    // Tong hop thong ke cho mot nhom
+    struct GroupStat {
+        long long minT = LLONG_MAX, maxT = 0, sumT = 0;
+        int count = 0;
+    };
+
+    auto aggregateGroup = [&](const Vector<int>& uids,
+                              std::function<void(int)> fn) -> GroupStat {
+        GroupStat gs;
+        for (size_t i = 0; i < uids.size(); ++i) {
+            Vector<long long> times = measureRepeated([&]{ fn(uids[i]); });
+            long long med = median(times);
+            long long mn  = times[0], mx = times[0];
+            for (size_t j = 1; j < times.size(); ++j) {
+                if (times[j] < mn) mn = times[j];
+                if (times[j] > mx) mx = times[j];
+            }
+            gs.minT  = std::min(gs.minT,  mn);
+            gs.maxT  = std::max(gs.maxT,  mx);
+            gs.sumT += med;
+            ++gs.count;
+        }
+        if (gs.count == 0) { gs.minT = 0; }
+        return gs;
+    };
+
+    // Ham in bang ket qua theo nhom
+    auto printGroupTable = [&](const std::string& title,
+                                std::function<void(int)> fn) {
+        std::cout << "\n  [" << title << "]\n";
+        std::cout << "  " << std::string(62, '-') << "\n";
         std::cout << "  " << std::left
-                  << std::setw(12) << uid
-                  << std::setw(12) << deg
-                  << std::setw(18) << bfsUs
-                  << sugUs << "\n";
+                  << std::setw(16) << "Nhom"
+                  << std::setw(7)  << "Mau"
+                  << std::setw(10) << "Min(us)"
+                  << std::setw(10) << "Avg(us)"
+                  << "Max(us)\n";
+        std::cout << "  " << std::string(52, '-') << "\n";
+
+        long long totalOps = 0;
+        long long totalTime = 0;
+
+        auto printRow = [&](Group& grp) {
+            Vector<int> samples = pickSamples(grp.uids);
+            if (samples.empty()) {
+                std::cout << "  " << std::left << std::setw(16) << grp.name
+                          << std::setw(7) << 0
+                          << "(khong co mau)\n";
+                return;
+            }
+            GroupStat gs = aggregateGroup(samples, fn);
+            long long avg = gs.count > 0 ? gs.sumT / gs.count : 0;
+            std::cout << "  " << std::left
+                      << std::setw(16) << grp.name
+                      << std::setw(7)  << gs.count
+                      << std::setw(10) << gs.minT
+                      << std::setw(10) << avg
+                      << gs.maxT << "\n";
+            totalOps  += gs.count;
+            totalTime += gs.sumT;
+        };
+
+        printRow(isolated);
+        printRow(low);
+        printRow(medium);
+        printRow(high);
+        printRow(hub);
+
+        std::cout << "  " << std::string(52, '-') << "\n";
+        if (totalTime > 0 && totalOps > 0) {
+            double throughput = static_cast<double>(totalOps) /
+                                (static_cast<double>(totalTime) / 1e6);
+            std::cout << "  Throughput: " << static_cast<long long>(throughput)
+                      << " ops/sec\n";
+        }
+    };
+
+    // ================================================================
+    // [1] BFS - getFriendsOfFriends
+    // ================================================================
+    printGroupTable("1. BFS - getFriendsOfFriends (depth = 2)",
+        [&](int uid) { getFriendsOfFriends(uid); });
+
+    // ================================================================
+    // [2] SUGGEST FRIENDS - suggestFriends
+    // ================================================================
+    printGroupTable("2. SUGGEST FRIENDS - suggestFriends (k = 10)",
+        [&](int uid) { suggestFriends(uid, 10); });
+
+    // ================================================================
+    // [3] SEARCH BY NAME - 4 nhom keyword
+    // ================================================================
+    // Tu trich keyword tu ten user thuc trong dataset
+    Vector<std::string> sampleNames;
+    users.forEach([&](const int&, const std::string& name) {
+        if (sampleNames.size() < 5 && !name.empty()) sampleNames.push_back(name);
+    });
+
+    std::string kwHigh   = (!sampleNames.empty() && sampleNames[0].size() >= 1)
+                           ? sampleNames[0].substr(0, 1) : "a";
+    std::string kwMedium = (sampleNames.size() >= 2 && sampleNames[1].size() >= 3)
+                           ? sampleNames[1].substr(0, 3) : "an";
+    std::string kwLow    = (sampleNames.size() >= 3 && sampleNames[2].size() >= 5)
+                           ? sampleNames[2].substr(sampleNames[2].size() >= 5 ? 2 : 0, 4)
+                           : "uyen";
+    std::string kwNone   = "ZZZNOTEXIST999";
+
+    struct SearchCase {
+        std::string label;
+        std::string keyword;
+    };
+    SearchCase searchCases[4] = {
+        {"High-match ",  kwHigh},
+        {"Medium-match", kwMedium},
+        {"Low-match  ",  kwLow},
+        {"No-match   ",  kwNone}
+    };
+
+    std::cout << "\n  [3. SEARCH BY NAME (scan luon O(N), khac o kich thuoc output)]\n";
+    std::cout << "  " << std::string(68, '-') << "\n";
+    std::cout << "  " << std::left
+              << std::setw(14) << "Nhom"
+              << std::setw(16) << "Keyword"
+              << std::setw(10) << "Min(us)"
+              << std::setw(10) << "Avg(us)"
+              << std::setw(10) << "Max(us)"
+              << "Ket qua\n";
+    std::cout << "  " << std::string(68, '-') << "\n";
+
+    for (int c = 0; c < 4; ++c) {
+        const std::string& kw = searchCases[c].keyword;
+        // Lay so ket qua truoc (dong thoi lam warm-up them 1 lan)
+        int resultCount = static_cast<int>(searchUserByName(kw).size());
+        // Do bang measureRepeated (da co warm-up WARMUP lan ben trong)
+        Vector<long long> times = measureRepeated([&]{ searchUserByName(kw); });
+        long long med = median(times);
+        long long mn = times[0], mx = times[0];
+        for (size_t j = 1; j < times.size(); ++j) {
+            if (times[j] < mn) mn = times[j];
+            if (times[j] > mx) mx = times[j];
+        }
+        // Hien thi keyword, cat ngan neu dai
+        std::string kwDisplay = "\"" + kw + "\"";
+        if (kwDisplay.size() > 13) kwDisplay = kwDisplay.substr(0, 12) + "\"";
+        std::cout << "  " << std::left
+                  << std::setw(14) << searchCases[c].label
+                  << std::setw(16) << kwDisplay
+                  << std::setw(10) << mn
+                  << std::setw(10) << med
+                  << std::setw(10) << mx
+                  << resultCount << "\n";
     }
+    std::cout << "  " << std::string(68, '-') << "\n";
 
-    // Thong ke tong hop
-    long long bfsAvg = sampleCount > 0 ? bfsSum / sampleCount : 0;
-    long long sugAvg = sampleCount > 0 ? sugSum / sampleCount : 0;
+    // ================================================================
+    // [4] GRAPH STATS - computeGraphStats
+    // ================================================================
+    std::cout << "\n  [4. GRAPH STATS - computeGraphStats (O(V+E))]\n";
+    std::cout << "  " << std::string(40, '-') << "\n";
+    {
+        Vector<long long> statsTimes = measureRepeated([&]{ computeGraphStats(); });
+        long long statsMed = median(statsTimes);
+        long long statsMn = statsTimes[0], statsMx = statsTimes[0];
+        for (size_t j = 1; j < statsTimes.size(); ++j) {
+            if (statsTimes[j] < statsMn) statsMn = statsTimes[j];
+            if (statsTimes[j] > statsMx) statsMx = statsTimes[j];
+        }
+        std::cout << "  Min: " << statsMn << " us  |  "
+                  << "Med: " << statsMed << " us  |  "
+                  << "Max: " << statsMx << " us\n";
+    }
+    std::cout << "  " << std::string(40, '-') << "\n";
 
-    std::cout << "  " << std::string(54, '-') << "\n";
-    std::cout << "  " << std::left << std::setw(24) << "Min:"
-              << std::setw(18) << bfsMin << sugMin << "\n";
-    std::cout << "  " << std::left << std::setw(24) << "Trung binh (avg):"
-              << std::setw(18) << bfsAvg << sugAvg << "\n";
-    std::cout << "  " << std::left << std::setw(24) << "Max:"
-              << std::setw(18) << bfsMax << sugMax << "\n";
-    std::cout << "============================================================\n";
-    std::cout << "  Don vi: us (microsecond) | 1 ms = 1000 us\n";
-    std::cout << "  So user mau: " << sampleCount
-              << " (phan bo deu trong " << totalUsers << " user)\n";
+    // ================================================================
+    // Tong ket
+    // ================================================================
+    std::cout << "\n============================================================\n";
+    std::cout << "  Don vi: us (microsecond) | 1ms = 1000 us\n";
+    std::cout << "  Phuong phap: warm-up " << WARMUP << " vong, do " << REPEAT
+              << " lan/mau, lay median\n";
+    std::cout << "  Phan nhom: Isolated(0) / Low(1-9) / Medium(10-99)"
+              << " / High(100-999) / Hub(1000+)\n";
     std::cout << "============================================================\n";
 }
 
